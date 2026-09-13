@@ -3,7 +3,7 @@ import { Sparkles, Loader2, RotateCw } from "lucide-react";
 import { useLanguage } from "../../context/LanguageContext";
 import { getSuggestedQuestions } from "../../services/searchApi";
 
-export default function SuggestedQuestions({ onSelect, count = 10 }) {
+export default function SuggestedQuestions({ onSelect, count = 5 }) {
     const { t, lang } = useLanguage();
     const isAr = lang === "ar";
 

@@ -12,11 +12,13 @@ import {
 import { useLanguage } from "../../context/LanguageContext";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
+import ConfirmDialog from "../../Pages/profile/ConfirmDialog";
 
 export default function Navbar() {
     const { t, lang, setLang } = useLanguage();
     const { isDark, toggleTheme } = useTheme();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
     const { pathname } = useLocation();
     const navigate = useNavigate();
     const { isAuthenticated, session, logout, isManager, isAdvisor, isAdmin, role } = useAuth();
@@ -71,8 +73,13 @@ export default function Navbar() {
         }
     }
 
+    const handleLogoutRequest = () => {
+        setIsLogoutDialogOpen(true);
+    };
+
     const handleLogout = () => {
         logout();
+        setIsLogoutDialogOpen(false);
         setIsMenuOpen(false);
         navigate("/");
     };
@@ -175,7 +182,7 @@ export default function Navbar() {
 
                             <button
                                 type="button"
-                                onClick={handleLogout}
+                                onClick={handleLogoutRequest}
                                 aria-label={t.nav.logout}
                                 title={t.nav.logout}
                                 className="flex h-9 w-9 items-center justify-center rounded-xl border border-red-500/20 bg-red-500/10 text-red-500 hover:bg-red-500/20 hover:text-red-400 transition-all"
@@ -250,7 +257,7 @@ export default function Navbar() {
                                 </Link>
                                 <button
                                     type="button"
-                                    onClick={handleLogout}
+                                    onClick={handleLogoutRequest}
                                     className="w-full rounded-xl bg-red-500/15 border border-red-500/30 p-2.5 text-xs font-bold text-red-500 text-center"
                                 >
                                     {t.nav.logout}
@@ -267,6 +274,17 @@ export default function Navbar() {
                         )}
                     </div>
                 </div>
+            )}
+
+            {isLogoutDialogOpen && (
+                <ConfirmDialog
+                    title={isAr ? "تأكيد تسجيل الخروج" : "Confirm Logout"}
+                    message={isAr ? "هل أنت متأكد من رغبتك في تسجيل الخروج؟" : "Are you sure you want to log out?"}
+                    confirmLabel={isAr ? "تسجيل الخروج" : "Log out"}
+                    cancelLabel={isAr ? "إلغاء" : "Cancel"}
+                    onConfirm={handleLogout}
+                    onCancel={() => setIsLogoutDialogOpen(false)}
+                />
             )}
         </header>
     );

@@ -25,14 +25,20 @@ export default function SearchInput({ value, onChange, onSubmit, onClear, isLoad
             </label>
             <div className="relative flex items-center gap-2 sm:gap-3 rounded-2xl border border-slate-200 dark:border-white/15 bg-white dark:bg-[#0B1120]/90 px-4 sm:px-5 py-3.5 sm:py-4 shadow-xl dark:shadow-[0_10px_30px_rgba(0,0,0,0.5)] backdrop-blur-md transition-all focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-500/20">
                 <Search className="h-5 w-5 flex-shrink-0 text-slate-400 dark:text-slate-400" aria-hidden="true" />
-                <input
+                <textarea
                     id="legal-search-input"
-                    type="text"
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
+                    onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            e.currentTarget.form?.requestSubmit();
+                        }
+                    }}
                     placeholder={t.search.input.placeholder}
                     disabled={isLoading}
-                    className="w-full min-w-0 border-none bg-transparent text-sm sm:text-base text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none disabled:text-slate-400"
+                    rows={1}
+                    className="w-full min-w-0 resize-y border-none bg-transparent text-sm sm:text-base text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none disabled:text-slate-400"
                 />
 
                 {/* Clear Input Button (X) */}

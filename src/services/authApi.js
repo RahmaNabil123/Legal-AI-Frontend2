@@ -160,6 +160,27 @@ export async function requestPasswordReset(email) {
     return true;
 }
 
+function extractResetToken(response) {
+    if (typeof response === "string") return response.trim();
+    if (!response || typeof response !== "object") return "";
+
+    const token =
+        response.token ||
+        response.Token ||
+        response.resetToken ||
+        response.ResetToken ||
+        response.identityToken ||
+        response.IdentityToken ||
+        response.data ||
+        response.Data ||
+        response.result ||
+        response.Result;
+
+    if (typeof token === "string") return token.trim();
+    if (token && typeof token === "object") return extractResetToken(token);
+    return "";
+}
+
 /**
  * Step 2: POST /api/Password/ConfirmReset
  * Body: { email, code }
@@ -167,13 +188,17 @@ export async function requestPasswordReset(email) {
  */
 export async function confirmPasswordReset(email, code) {
     try {
-        const token = await request("/api/Password/ConfirmReset", {
+        const response = await request("/api/Password/ConfirmReset", {
             method: "POST",
             body: { email: email.trim(), code: code.trim() },
         });
-        return token || "mock-identity-reset-token";
-    } catch {
-        // Fallback
+        const token = extractResetToken(response);
+        if (!token) {
+            throw new ApiError("The reset token was not returned by the server.", 502, response);
+        }
+        return token;
+    } catch (err) {
+        if (err?.status) throw err;
     }
     await wait(500);
     return "mock-identity-reset-token";
@@ -184,18 +209,23 @@ export async function confirmPasswordReset(email, code) {
  * Body: { email, token, newPassword }
  */
 export async function resetPassword(email, token, newPassword) {
+    const normalizedToken = typeof token === "string" ? token.trim() : extractResetToken(token);
+    if (!normalizedToken) {
+        throw new ApiError("The reset token is missing or invalid.", 400);
+    }
+
     try {
         const result = await request("/api/Password/ResetPassword", {
             method: "POST",
             body: {
                 email: email.trim(),
-                token: token,
+                token: normalizedToken,
                 newPassword: newPassword,
             },
         });
         return result ?? true;
-    } catch {
-        // Fallback
+    } catch (err) {
+        if (err?.status) throw err;
     }
     await wait(500);
     return true;

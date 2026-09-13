@@ -128,7 +128,7 @@ export default function AddUserPage() {
         }
     };
 
-    // Step 1: Request Activation Code (POST /api/Admin/Users/request)
+    // Step 1: Request activation code.
     const handleRequestOtp = async (e) => {
         e.preventDefault();
         setServerError("");
@@ -208,7 +208,7 @@ export default function AddUserPage() {
         return errs;
     };
 
-    // Step 2 Submit: Onboard User (POST /api/Admin/Users)
+    // Step 2: Submit the verified user profile.
     const handleFinalSubmit = async (e) => {
         e.preventDefault();
         setServerError("");
@@ -231,7 +231,12 @@ export default function AddUserPage() {
 
         setIsSubmitting(true);
         try {
-            await createUser(fields, otpCode.trim());
+            if (fields.email.trim().toLowerCase() !== emailInput.trim().toLowerCase()) {
+                setServerError(isAr ? "البريد الإلكتروني يجب أن يطابق البريد الذي تم إرسال الرمز إليه." : "Email must match the email used to request the OTP.");
+                return;
+            }
+
+            await createUser(fields, otpCode.trim(), emailInput);
             setSuccessMessage(
                 isAr
                     ? "تم إنشاء وتفعيل حساب المستخدم بنجاح! جاري تحويلك لإدارة المستخدمين..."
@@ -400,7 +405,7 @@ export default function AddUserPage() {
                         onSubmit={handleFinalSubmit}
                         className="rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0B1120]/80 p-6 sm:p-8 shadow-xl backdrop-blur-md space-y-6"
                     >
-                        {/* Role Picker (RolesDTO: 1..4) */}
+                        {/* Role picker. */}
                         <div>
                             <label className="mb-3 block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
                                 {isAr ? "الدور الوظيفي والصلاحية *" : "Assigned Role *"}

@@ -1,5 +1,5 @@
 import { ApiError } from "./apiError";
-import { request, BASE_URL } from "./httpClient";
+import { request, apiUrl } from "./httpClient";
 import { getToken } from "./tokenStorage";
 
 /**
@@ -162,6 +162,7 @@ export async function searchLegalPrecedent(query) {
                 "legal-rag-query": trimmed,
                 query: trimmed,
             },
+            timeout: 120000,
         });
 
         if (result) {
@@ -343,7 +344,7 @@ export async function getDocumentForViewing(fileName) {
     const isPdf = cleanName.toLowerCase().endsWith(".pdf");
 
     try {
-        const response = await fetch(`${BASE_URL}/api/LegalOpinion/Document/Download?fileName=${encodeURIComponent(cleanName)}`, {
+        const response = await fetch(apiUrl(`/api/LegalOpinion/Document/Download?fileName=${encodeURIComponent(cleanName)}`), {
             method: "GET",
             headers: {
                 ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -398,7 +399,7 @@ export async function downloadDocumentByName(fileName) {
     const isPdf = cleanName.toLowerCase().endsWith(".pdf");
 
     try {
-        const response = await fetch(`${BASE_URL}/api/LegalOpinion/Document/Download?fileName=${encodeURIComponent(cleanName)}`, {
+        const response = await fetch(apiUrl(`/api/LegalOpinion/Document/Download?fileName=${encodeURIComponent(cleanName)}`), {
             method: "GET",
             headers: {
                 ...(token ? { Authorization: `Bearer ${token}` } : {}),

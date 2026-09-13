@@ -1,5 +1,5 @@
 import { ApiError } from "./apiError";
-import { request } from "./httpClient";
+import { request, apiUrl } from "./httpClient";
 import { getSession, getToken } from "./tokenStorage";
 
 /**
@@ -438,10 +438,9 @@ export async function deleteOpinion(id) {
  */
 export async function downloadDocumentBySource(fileName) {
     const token = getToken();
-    const BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
     try {
         const response = await fetch(
-            `${BASE_URL}/api/LegalOpinion/Document-By-Source?fileName=${encodeURIComponent(fileName)}`,
+            apiUrl(`/api/LegalOpinion/Document-By-Source?fileName=${encodeURIComponent(fileName)}`),
             {
                 method: "GET",
                 headers: {
