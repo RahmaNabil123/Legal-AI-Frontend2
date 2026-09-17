@@ -106,24 +106,10 @@ export async function getSuggestedQuestions(count = 10) {
     return shuffled.slice(0, count);
 }
 
-const NON_LEGAL_PATTERNS = [
-    /كيك/i, /طبخ/i, /طريقة عمل/i, /أكل/i, /طعام/i, /وصفة/i,
-    /cake/i, /cook/i, /recipe/i, /food/i, /eat/i,
-    /ميسي/i, /كرة/i, /مباراة/i, /film/i, /movie/i, /أغنية/i,
-    /طقس/i, /جو/i, /weather/i,
-    /how to/i, /ازاي/i, /إزاي/i, /كيف أعمل/i, /طريقة/i
-];
-
-function isOutOfScopeQuery(text) {
-    // If text contains non-legal everyday keywords without legal terms
-    const hasNonLegalWord = NON_LEGAL_PATTERNS.some((pattern) => pattern.test(text));
-    const hasLegalWord = /قانون|محكم|حكم|نقض|دعوى|عقد|شيك|فائدة|بنك|طلاق|إيجار|تركة|جريمة|عقوب|استئناف|حقوق|ميراث/i.test(text);
-    return hasNonLegalWord && !hasLegalWord;
-}
-
 /**
  * Main AI Search Endpoint:
  * Matches the exact schema returned by your AI Backend.
+ * Fully supports long, multi-line questions.
  */
 export async function searchLegalPrecedent(query) {
     const trimmed = query.trim();
@@ -136,12 +122,12 @@ export async function searchLegalPrecedent(query) {
         throw new ApiError("Something went wrong on our end. Please try again.", 500);
     }
 
+    // Only test words explicitly designated to simulate empty results
     if (
         normalized === "noresults" ||
         normalized === "no answer" ||
         normalized === "لا توجد إجابة" ||
-        normalized === "غير موجود" ||
-        isOutOfScopeQuery(trimmed)
+        normalized === "غير موجود"
     ) {
         return {
             question: trimmed,
@@ -153,26 +139,47 @@ export async function searchLegalPrecedent(query) {
         };
     }
 
+    // Normalize multi-line text (replace multiple newlines/tabs with space) while preserving text content
+    const sanitizedQuery = trimmed.replace(/[\r\n]+/g, " ").replace(/\s+/g, " ").trim();
+
     try {
         // Real Backend endpoint: POST /api/LegalOpinion/Ask
-        // Body: { "legal-rag-query": query }
+        // Send both the sanitized single-line and original text to cover all backend expectations
         const result = await request("/api/LegalOpinion/Ask", {
             method: "POST",
             body: {
-                "legal-rag-query": trimmed,
-                query: trimmed,
+                "legal-rag-query": sanitizedQuery || trimmed,
+                query: sanitizedQuery || trimmed,
+                question: sanitizedQuery || trimmed,
+                Question: sanitizedQuery || trimmed,
+                rawQuery: trimmed,
             },
+            timeout: 90000, // 90 seconds timeout for deep legal RAG reasoning
         });
 
         if (result) {
-            // Check if backend indicates no answer was found (found: false, or empty answer)
-            if (
+            // Extract answer supporting multiple possible casing styles (answer, Answer, result, response, text)
+            const answer =
+                (typeof result === "string" ? result : "") ||
+                result.answer ||
+                result.Answer ||
+                result.response ||
+                result.Response ||
+                result.result ||
+                result.Result ||
+                result.text ||
+                result.Text ||
+                "";
+
+            // Check if backend specifically indicated that no answer exists
+            const hasExplicitNoAnswer =
                 result.found === false ||
                 result.Found === false ||
                 result.hasAnswer === false ||
-                !result.answer ||
-                (typeof result.ErrorMessage === "string" && result.ErrorMessage.trim() !== "")
-            ) {
+                result.HasAnswer === false ||
+                (typeof result.ErrorMessage === "string" && result.ErrorMessage.trim() !== "");
+
+            if (hasExplicitNoAnswer || !answer.trim()) {
                 return {
                     question: trimmed,
                     hasAnswer: false,
@@ -184,14 +191,13 @@ export async function searchLegalPrecedent(query) {
             }
 
             const source = result.source || result.Source || "";
-            const answer = result.answer || result.Answer || "";
 
             return {
                 question: trimmed,
                 answer,
                 source,
                 hasAnswer: true,
-                selected_legal_evidence: result.selected_legal_evidence || (source ? [
+                selected_legal_evidence: result.selected_legal_evidence || result.Selected_legal_evidence || (source ? [
                     {
                         id: "ev-1",
                         citation: "[1]",
@@ -204,7 +210,7 @@ export async function searchLegalPrecedent(query) {
                         evidence: answer,
                     },
                 ] : []),
-                citations: result.citations || (source ? [{ marker: "[1]", source, section: "المبدأ القضائي", page: 1 }] : []),
+                citations: result.citations || result.Citations || (source ? [{ marker: "[1]", source, section: "المبدأ القضائي", page: 1 }] : []),
             };
         }
     } catch (err) {
@@ -218,8 +224,7 @@ export async function searchLegalPrecedent(query) {
             ""
         ).toLowerCase();
 
-        const isNoAnswer =
-            err?.status === 400 ||
+        const isExplicitNoAnswer =
             rawMsg.includes("does not has answer") ||
             rawMsg.includes("does not have answer") ||
             rawMsg.includes("no answer") ||
@@ -227,7 +232,19 @@ export async function searchLegalPrecedent(query) {
             rawMsg.includes("غير موجود") ||
             rawMsg.includes("لا توجد إجابة");
 
-        if (isNoAnswer) {
+        if (isExplicitNoAnswer) {
+            return {
+                question: trimmed,
+                hasAnswer: false,
+                answer: "",
+                source: null,
+                selected_legal_evidence: [],
+                citations: [],
+            };
+        }
+
+        // If backend returns 400 without specific error message, handle gracefully
+        if (err?.status === 400 && !err?.rawResponse?.errors) {
             return {
                 question: trimmed,
                 hasAnswer: false,
