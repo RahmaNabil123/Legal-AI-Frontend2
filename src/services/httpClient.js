@@ -12,7 +12,11 @@ import { getToken, clearSession } from "./tokenStorage";
  * Base URL: set VITE_API_BASE_URL in a .env file once you have a real API
  * host. Left blank for now.
  */
-export const BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
+export const BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
+
+export function apiUrl(path) {
+    return `${BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
+}
 
 export async function request(path, { method = "GET", body, headers = {}, timeout = 45000 } = {}) {
     const token = getToken();
@@ -23,7 +27,7 @@ export async function request(path, { method = "GET", body, headers = {}, timeou
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
     try {
-        response = await fetch(`${BASE_URL}${path}`, {
+        response = await fetch(apiUrl(path), {
             method,
             headers: {
                 // FormData sets its own multipart Content-Type (with boundary) —
@@ -44,10 +48,14 @@ export async function request(path, { method = "GET", body, headers = {}, timeou
     }
 
     let data = null;
-    try {
-        data = await response.json();
-    } catch {
-        // No JSON body — fine for some responses (e.g. 204 No Content).
+    const responseText = await response.text();
+    if (responseText) {
+        try {
+            data = JSON.parse(responseText);
+        } catch {
+            // Some endpoints return plain text, including ASP.NET reset tokens.
+            data = responseText;
+        }
     }
 
     if (!response.ok) {

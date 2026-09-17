@@ -23,7 +23,7 @@ export default function AnswerCard({
     source,
     selected_legal_evidence,
 }) {
-    const { dir, lang } = useLanguage();
+    const { lang, t } = useLanguage();
 
     const isAr = lang === "ar";
 

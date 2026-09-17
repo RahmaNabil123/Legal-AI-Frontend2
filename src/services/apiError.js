@@ -41,9 +41,9 @@ export function getErrorMessage(error) {
         return error.message || "Network error. Please check your connection.";
     }
 
-    // Confirmed shape first.
-    const errorMessage = error.data?.errorMessage;
-    const errorsField = error.data?.errors;
+    // Prefer the backend's message over the generic ApiError fallback.
+    const errorMessage = error.data?.errorMessage || error.data?.ErrorMessage;
+    const errorsField = error.data?.errors || error.data?.Errors;
     let errorsText;
     if (Array.isArray(errorsField)) {
         errorsText = errorsField.join(" ");
@@ -51,23 +51,22 @@ export function getErrorMessage(error) {
         errorsText = Object.values(errorsField).flat().join(" ");
     }
 
+    if (errorMessage) {
+        return errorMessage;
+    }
+
     if (error.status === 401) {
-        return error.message || errorMessage || "Incorrect email or password.";
+        return error.message !== "Request failed" ? error.message : "Incorrect email or password.";
     }
 
     if (error.status >= 500) {
-        return error.message || errorMessage || "Something went wrong on our end. Please try again.";
+        return error.message !== "Request failed" ? error.message : "Something went wrong on our end. Please try again.";
     }
 
     // Best-effort guesses for endpoints without a confirmed shape yet.
     const guessedMessage =
-        error.data?.message || error.data?.error || error.data?.detail;
+        error.data?.message || error.data?.Message || error.data?.error || error.data?.Error || error.data?.detail || error.data?.Detail;
 
-    return (
-        error.message ||
-        errorMessage ||
-        errorsText ||
-        guessedMessage ||
-        "Something went wrong. Please try again."
-    );
+    if (errorsText || guessedMessage) return errorsText || guessedMessage;
+    return error.message !== "Request failed" ? error.message : "Something went wrong. Please try again.";
 }

@@ -64,39 +64,31 @@ export async function updateProfile(changedFields, pictureFile) {
         throw new ApiError("لم يتم إجراء أي تغييرات لحفظها.", 400);
     }
 
-    try {
-        const formData = new FormData();
-        Object.entries(changedFields).forEach(([key, value]) => {
-            if (value !== undefined && value !== null) {
-                const pascalKey = key.charAt(0).toUpperCase() + key.slice(1);
-                formData.append(pascalKey, value);
-                formData.append(key, value);
-            }
-        });
-        if (pictureFile) {
-            formData.append("ProfilePicture", pictureFile);
-            formData.append("profilePicture", pictureFile);
+    const formData = new FormData();
+    Object.entries(changedFields).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+            const pascalKey = key.charAt(0).toUpperCase() + key.slice(1);
+            formData.append(pascalKey, value);
         }
-
-        const realUpdated = await request("/api/Authentication/Profile", {
-            method: "PUT",
-            body: formData,
-        });
-        if (realUpdated) return realUpdated;
-    } catch {
-        // Fallback to updating local session
+    });
+    if (pictureFile) {
+        formData.append("ProfilePicture", pictureFile);
     }
 
-    await wait(MOCK_DELAY_MS);
-
+    const realUpdated = await request("/api/Authentication/Profile", {
+        method: "PUT",
+        body: formData,
+    });
     const current = getActiveUserProfile();
     const updated = {
         ...current,
+        ...(realUpdated || {}),
         ...changedFields,
-        profilePicture: pictureFile ? URL.createObjectURL(pictureFile) : current.profilePicture,
+        profilePicture: pictureFile
+            ? realUpdated?.profilePicture || URL.createObjectURL(pictureFile)
+            : realUpdated?.profilePicture || current.profilePicture,
     };
 
-    // Sync back to stored session so Navbar immediately updates
     const session = getSession();
     if (session) {
         saveSession({
@@ -112,19 +104,12 @@ export async function updateProfile(changedFields, pictureFile) {
 }
 
 export async function deleteProfilePicture() {
-    try {
-        const realResult = await request("/api/Authentication/Picture", { method: "PATCH" });
-        if (realResult) return realResult;
-    } catch {
-        // Fallback
-    }
-
-    await wait(MOCK_DELAY_MS);
-
+    const realResult = await request("/api/Authentication/Picture", { method: "PATCH" });
     const current = getActiveUserProfile();
     const updated = {
         ...current,
-        profilePicture: "No Profile Picture",
+        ...(realResult || {}),
+        profilePicture: realResult?.profilePicture || "No Profile Picture",
     };
 
     const session = getSession();
@@ -133,7 +118,7 @@ export async function deleteProfilePicture() {
             ...session,
             user: {
                 ...session.user,
-                profilePicture: "No Profile Picture",
+                ...updated,
             },
         });
     }

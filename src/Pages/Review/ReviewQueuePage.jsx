@@ -8,6 +8,7 @@ import {
     ArrowRight,
     ArrowLeft,
     Sparkles,
+    CheckCircle2,
     XCircle,
     Loader2,
     Shield,

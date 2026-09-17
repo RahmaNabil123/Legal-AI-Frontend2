@@ -8,10 +8,10 @@ import { request } from "./httpClient";
  * Endpoints:
  * 1. GET    /api/PrivilegesAdmin/Users               -> IReadOnlyList<UserProfileResultDTO>
  * 2. GET    /api/PrivilegesAdmin/Users/{id}          -> UserActivityResultDTO
- * 3. POST   /api/PrivilegesAdmin/RequestAddNewUser   -> [FromBody] RequestUserDTO { email } (Step 1)
- * 4. POST   /api/PrivilegesAdmin/AddNewUser          -> [FromForm] RegisterDTO + ?rolesDTO= (Step 2)
- * 5. PATCH  /api/PrivilegesAdmin/BlockUser/{id}      -> Sets IsActive = false
- * 6. PATCH  /api/PrivilegesAdmin/ActivateUser/{id}   -> Sets IsActive = true
+ * 3. POST   /api/PrivilegesAdmin/RequestNewUser       -> { Email } (Step 1)
+ * 4. POST   /api/PrivilegesAdmin/ConfirmAddUser       -> [FromForm] RegisterDTO + role (Step 2)
+ * 5. PATCH  /api/PrivilegesAdmin/User/{id}/Block      -> Sets IsActive = false
+ * 6. PATCH  /api/PrivilegesAdmin/User/{id}/Activate   -> Sets IsActive = true
  * 7. DELETE /api/PrivilegesAdmin/DeleteUser/{id}     -> Hard deletes blocked user
  *
  * RolesDTO enum:
@@ -258,35 +258,45 @@ export async function getUserById(id) {
 }
 
 /**
- * Step 1: POST /api/Admin/Users/request or /api/PrivilegesAdmin/RequestAddNewUser
- * Body: { email }
+ * Step 1: POST /api/PrivilegesAdmin/RequestNewUser
+ * Body: { Email }
  */
 export async function requestAddNewUser(email) {
-    try {
-        let res;
-        try {
-            res = await request("/api/Admin/Users/request", {
-                method: "POST",
-                body: { email: email.trim() },
-            });
-        } catch {
-            res = await request("/api/PrivilegesAdmin/RequestAddNewUser", {
-                method: "POST",
-                body: { email: email.trim() },
-            });
-        }
-        return res ?? true;
-    } catch (err) {
-        if (err?.status) throw err;
-    }
-    return true;
+    const normalizedEmail = email.trim();
+    if (!normalizedEmail) throw new ApiError("Email is required.", 400);
+
+    const response = await request("/api/PrivilegesAdmin/RequestNewUser", {
+        method: "POST",
+        body: { Email: normalizedEmail },
+    });
+    return response ?? true;
 }
 
 /**
- * Step 2: POST /api/Admin/Users or /api/PrivilegesAdmin/AddNewUser?rolesDTO=...
+ * Step 2: POST /api/PrivilegesAdmin/ConfirmAddUser
  * Body: [FromForm] multipart/form-data
  */
-export async function createUser(userData, token = "123456") {
+export async function createUser(userData, token, requestedEmail = userData.email) {
+    const requiredFields = [
+        ["firstName", userData.firstName],
+        ["lastName", userData.lastName],
+        ["userName", userData.userName],
+        ["email", userData.email],
+        ["password", userData.password],
+        ["phoneNumber", userData.phoneNumber],
+        ["address", userData.address],
+        ["governorate", userData.governorate],
+        ["token", token],
+    ];
+    const missingField = requiredFields.find(([, value]) => !String(value || "").trim());
+    if (missingField) {
+        throw new ApiError(`${missingField[0]} is required.`, 400);
+    }
+
+    if (userData.email.trim().toLowerCase() !== requestedEmail.trim().toLowerCase()) {
+        throw new ApiError("The confirmation email must match the requested email.", 400);
+    }
+
     const roleNum = mapRoleToEnumNumber(userData.role);
 
     try {
@@ -295,29 +305,21 @@ export async function createUser(userData, token = "123456") {
         formData.append("LastName", userData.lastName.trim());
         formData.append("UserName", userData.userName || userData.email.split("@")[0]);
         formData.append("Email", userData.email.trim());
-        formData.append("Password", userData.password || "Passw0rd123!");
-        formData.append("PhoneNumber", userData.phoneNumber || "");
-        formData.append("Address", userData.address || "القطاع المصرفي");
-        formData.append("Governorate", userData.governorate || "القاهرة");
-        formData.append("Token", token);
-        formData.append("RolesDTO", String(roleNum));
+        formData.append("Password", userData.password.trim());
+        formData.append("PhoneNumber", userData.phoneNumber.trim());
+        formData.append("Address", userData.address.trim());
+        formData.append("Governorate", userData.governorate.trim());
+        formData.append("Token", token.trim());
+        formData.append("role", String(roleNum));
         if (userData.profilePicture instanceof File) {
             formData.append("ProfilePicture", userData.profilePicture);
         }
 
-        let created;
-        try {
-            created = await request("/api/Admin/Users", {
-                method: "POST",
-                body: formData,
-            });
-        } catch {
-            created = await request(`/api/PrivilegesAdmin/AddNewUser?rolesDTO=${roleNum}`, {
-                method: "POST",
-                body: formData,
-            });
-        }
-        if (created) return created;
+        const created = await request("/api/PrivilegesAdmin/ConfirmAddUser", {
+            method: "POST",
+            body: formData,
+        });
+        return created ?? true;
     } catch (err) {
         if (err?.status) throw err;
     }
@@ -338,18 +340,12 @@ export async function createUser(userData, token = "123456") {
 }
 
 /**
- * PATCH /api/Admin/Users/{id}/block or /api/PrivilegesAdmin/BlockUser/{id}
+ * PATCH /api/PrivilegesAdmin/User/{id}/Block
  * Sets IsActive = false
  */
 export async function blockUser(id) {
     try {
-        let res;
-        try {
-            res = await request(`/api/Admin/Users/${id}/block`, { method: "PATCH" });
-        } catch (err) {
-            if (err?.status === 400 || err?.status === 403) throw err;
-            res = await request(`/api/PrivilegesAdmin/BlockUser/${id}`, { method: "PATCH" });
-        }
+        const res = await request(`/api/PrivilegesAdmin/User/${id}/Block`, { method: "PATCH" });
         if (res !== undefined) return res;
     } catch (err) {
         if (err?.status) throw err;
@@ -361,18 +357,12 @@ export async function blockUser(id) {
 }
 
 /**
- * PATCH /api/Admin/Users/{id}/activate or /api/PrivilegesAdmin/ActivateUser/{id}
+ * PATCH /api/PrivilegesAdmin/User/{id}/Activate
  * Sets IsActive = true
  */
 export async function activateUser(id) {
     try {
-        let res;
-        try {
-            res = await request(`/api/Admin/Users/${id}/activate`, { method: "PATCH" });
-        } catch (err) {
-            if (err?.status === 400 || err?.status === 403) throw err;
-            res = await request(`/api/PrivilegesAdmin/ActivateUser/${id}`, { method: "PATCH" });
-        }
+        const res = await request(`/api/PrivilegesAdmin/User/${id}/Activate`, { method: "PATCH" });
         if (res !== undefined) return res;
     } catch (err) {
         if (err?.status) throw err;
