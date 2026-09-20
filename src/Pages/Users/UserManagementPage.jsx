@@ -87,6 +87,21 @@ export default function UserManagementPage() {
     }, [loadUsers]);
 
     const handleToggleStatus = async (id, currentStatus) => {
+        const isSelf = Boolean(
+            currentUser &&
+            (
+                String(currentUser.id) === String(id) ||
+                users.some(u => String(u.id) === String(id) && (
+                    (currentUser.email && u.email && currentUser.email.trim().toLowerCase() === u.email.trim().toLowerCase()) ||
+                    (currentUser.userName && u.userName && currentUser.userName.trim().toLowerCase() === u.userName.trim().toLowerCase())
+                ))
+            )
+        );
+        if (isSelf) {
+            setError(isAr ? "لا يمكنك حظر أو تعطيل حسابك الحالي المسجل به كمسؤول للنظام." : "Cannot block or deactivate your own active account.");
+            return;
+        }
+
         try {
             await toggleUserStatus(id, currentStatus);
             setUsers((prev) =>
@@ -101,6 +116,21 @@ export default function UserManagementPage() {
     };
 
     const handleDelete = async (id) => {
+        const isSelf = Boolean(
+            currentUser &&
+            (
+                String(currentUser.id) === String(id) ||
+                users.some(u => String(u.id) === String(id) && (
+                    (currentUser.email && u.email && currentUser.email.trim().toLowerCase() === u.email.trim().toLowerCase()) ||
+                    (currentUser.userName && u.userName && currentUser.userName.trim().toLowerCase() === u.userName.trim().toLowerCase())
+                ))
+            )
+        );
+        if (isSelf) {
+            setError(isAr ? "لا يمكنك حذف حسابك الحالي المسجل به في المنظومة." : "Cannot delete your own active account.");
+            return;
+        }
+
         if (!window.confirm(isAr ? "هل أنت متأكد من حذف هذا المستخدم نهائياً؟" : "Are you sure to delete this user?")) {
             return;
         }
@@ -355,12 +385,26 @@ export default function UserManagementPage() {
                                                             </div>
                                                         )}
                                                         <div>
-                                                            <Link
-                                                                to={`/users/${u.id}`}
-                                                                className="font-bold text-slate-900 dark:text-white hover:text-blue-500 transition-colors"
-                                                            >
-                                                                {u.firstName} {u.lastName}
-                                                            </Link>
+                                                            <div className="flex items-center gap-2">
+                                                                <Link
+                                                                    to={`/users/${u.id}`}
+                                                                    className="font-bold text-slate-900 dark:text-white hover:text-blue-500 transition-colors"
+                                                                >
+                                                                    {u.firstName} {u.lastName}
+                                                                </Link>
+                                                                {Boolean(
+                                                                    currentUser &&
+                                                                    (
+                                                                        String(currentUser.id) === String(u.id) ||
+                                                                        (currentUser.email && u.email && currentUser.email.trim().toLowerCase() === u.email.trim().toLowerCase()) ||
+                                                                        (currentUser.userName && u.userName && currentUser.userName.trim().toLowerCase() === u.userName.trim().toLowerCase())
+                                                                    )
+                                                                ) && (
+                                                                    <span className="inline-flex items-center gap-1 rounded-md bg-blue-500/15 border border-blue-500/30 px-1.5 py-0.5 text-[10px] font-bold text-blue-600 dark:text-blue-400">
+                                                                        {isAr ? "أنت (الحساب الحالي)" : "You (Current)"}
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                             <p className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
                                                                 <Mail className="h-3 w-3" />
                                                                 <span>{u.email}</span>

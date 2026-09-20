@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
     FileCheck,
-    Clock,
     User,
     Calendar,
     ArrowRight,
@@ -11,7 +10,6 @@ import {
     CheckCircle2,
     XCircle,
     Loader2,
-    Shield,
 } from "lucide-react";
 
 import Navbar from "../../components/home/Navbar";

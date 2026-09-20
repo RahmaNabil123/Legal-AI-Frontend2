@@ -241,14 +241,16 @@ export default function MyOpinionsPage() {
                                     )}
 
                                     <div className="flex items-center gap-2">
-                                        <button
-                                            type="button"
-                                            onClick={(e) => handleDelete(op.id, e)}
-                                            className="rounded-lg p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-500/10 transition-colors"
-                                            title={isAr ? "حذف الرأي" : "Delete"}
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </button>
+                                        {op.status !== "Approved" && op.statusCode !== 2 && (
+                                            <button
+                                                type="button"
+                                                onClick={(e) => handleDelete(op.id, e)}
+                                                className="rounded-lg p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                                                title={isAr ? "حذف الرأي" : "Delete"}
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </button>
+                                        )}
                                         <span className="text-xs font-bold text-purple-500 flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
                                             <span>{isAr ? "عرض" : "View"}</span>
                                             <Eye className="h-3.5 w-3.5" />

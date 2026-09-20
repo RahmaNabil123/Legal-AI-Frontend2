@@ -302,7 +302,10 @@ export default function OpinionsListPage() {
                                                             <span>{isAr ? "مرفق" : "Attached"}</span>
                                                         </span>
                                                     ) : (
-                                                        <span className="text-xs text-slate-400">-</span>
+                                                        <span className="inline-flex items-center gap-1 rounded-lg bg-blue-500/10 px-2.5 py-1 text-xs font-bold text-blue-600 dark:text-blue-400">
+                                                            <Paperclip className="h-3 w-3" />
+                                                            <span>{isAr ? "غير مرفق" : "Not attached"}</span>
+                                                        </span>
                                                     )}
                                                 </td>
 

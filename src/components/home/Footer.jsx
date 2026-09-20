@@ -1,13 +1,25 @@
 import { Link } from "react-router-dom";
 import { Shield } from "lucide-react";
 import { useLanguage } from "../../context/LanguageContext";
+import { useAuth } from "../../context/AuthContext";
 
 export default function Footer() {
     const { t, lang, setLang } = useLanguage();
+    const { isAdmin, isManager } = useAuth();
 
     const links = [
         { to: "/", label: t.footer.home },
-        { to: "/search", label: t.footer.search },
+        ...(isAdmin
+            ? [
+                { to: "/users", label: lang === "ar" ? "إدارة المستخدمين" : "Users" },
+                { to: "/users/new", label: lang === "ar" ? "إضافة مستخدم جديد" : "Add User" }
+              ]
+            : isManager
+            ? [
+                { to: "/search", label: t.footer.search },
+                { to: "/opinions", label: lang === "ar" ? "الفتاوى القانونية" : "Legal Opinions" }
+              ]
+            : [{ to: "/search", label: t.footer.search }]),
         { to: "/#features", label: t.nav.features || "Features", isAnchor: true },
         { to: "/#security", label: t.nav.security || "Security", isAnchor: true },
         { to: "/login", label: t.footer.login },

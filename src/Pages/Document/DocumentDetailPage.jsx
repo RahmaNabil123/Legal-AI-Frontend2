@@ -20,12 +20,14 @@ import {
 import Navbar from "../../components/home/Navbar";
 import { getDocumentById } from "../../services/searchApi";
 import { useLanguage } from "../../context/LanguageContext";
+import { useAuth } from "../../context/AuthContext";
 import { getErrorMessage } from "../../services/apiError";
 
 export default function DocumentDetailPage() {
     const { id } = useParams();
     const navigate = useNavigate();
     const { t, dir } = useLanguage();
+    const { isAdmin } = useAuth();
 
     const [document, setDocument] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -131,10 +133,14 @@ export default function DocumentDetailPage() {
                         </p>
                         <button
                             type="button"
-                            onClick={() => navigate("/search")}
+                            onClick={() => navigate(isAdmin ? "/users" : "/search")}
                             className="mt-6 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-600/20 hover:bg-blue-500"
                         >
-                            <span>{d.backToSearch || "Back to Search"}</span>
+                            <span>
+                                {isAdmin
+                                    ? (dir === "rtl" ? "إدارة المستخدمين" : "Users Management")
+                                    : (d.backToSearch || "Back to Search")}
+                            </span>
                         </button>
                     </div>
                 )}

@@ -34,6 +34,7 @@ export default function App() {
             <Routes>
               {/* Public Entry & Authentication */}
               <Route path="/" element={<HomePage />} />
+              <Route path="/home" element={<HomePage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/forgot-password" element={<Navigate to="/login" replace />} />
 
@@ -41,16 +42,23 @@ export default function App() {
               <Route
                 path="/dashboard"
                 element={
-                  <ProtectedRoute>
+                  <ProtectedRoute allowedRoles={["Lawyer", "Legal Advisor", "Legal Manager"]}>
                     <DashboardPage />
                   </ProtectedRoute>
                 }
               />
-              <Route path="/search" element={<SearchPage />} />
+              <Route
+                path="/search"
+                element={
+                  <ProtectedRoute allowedRoles={["Lawyer", "Legal Advisor", "Legal Manager"]}>
+                    <SearchPage />
+                  </ProtectedRoute>
+                }
+              />
               <Route
                 path="/documents/:id"
                 element={
-                  <ProtectedRoute>
+                  <ProtectedRoute allowedRoles={["Lawyer", "Legal Advisor", "Legal Manager"]}>
                     <DocumentDetailPage />
                   </ProtectedRoute>
                 }

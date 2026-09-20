@@ -27,6 +27,11 @@ import Input from "../../components/Input/Input";
 import Alert from "../../components/Alert/Alert";
 import { useLanguage } from "../../context/LanguageContext";
 import { requestAddNewUser, createUser } from "../../services/userApi";
+import {
+    isCodeSentWithinCooldown,
+    recordCodeSent,
+    isAlreadySentBackendMessage,
+} from "../../utils/codeCooldown";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const OTP_EXPIRY_SECONDS = 300; // 5 minutes (Section 4.3 OTP-gated policy)
@@ -144,9 +149,25 @@ export default function AddUserPage() {
             return;
         }
 
+        const cooldownKey = `add_user_${trimmed}`;
+
+        // 5-minute rule: If requested again within 5 minutes, do not send new code, display "تم إرسال الكود بالفعل"
+        if (isCodeSentWithinCooldown(cooldownKey)) {
+            setFields((prev) => ({
+                ...prev,
+                email: trimmed,
+                userName: trimmed.split("@")[0].replace(/[^a-zA-Z0-9]/g, "").toUpperCase(),
+            }));
+            setStep(2);
+            setTimeLeft(OTP_EXPIRY_SECONDS);
+            setResendNotice(isAr ? "تم إرسال الكود بالفعل" : "The code has already been sent.");
+            return;
+        }
+
         setIsSendingOtp(true);
         try {
             await requestAddNewUser(trimmed);
+            recordCodeSent(cooldownKey);
             setFields((prev) => ({
                 ...prev,
                 email: trimmed,
@@ -156,16 +177,28 @@ export default function AddUserPage() {
             setTimeLeft(OTP_EXPIRY_SECONDS);
             setResendNotice(
                 isAr
-                    ? `تم إرسال رمز التحقق OTP بنجاح إلى (${trimmed}). صالح لمدة 5 دقائق.`
-                    : `Verification code sent to (${trimmed}). Valid for 5 minutes.`
+                    ? `تم إرسال رمز التحقق OTP بنجاح إلى (${trimmed}).`
+                    : `Verification code sent to (${trimmed}).`
             );
         } catch (err) {
-            setServerError(
-                err.message ||
-                    (isAr
-                        ? "فشل إرسال كود التفعيل. تأكد من صحة البريد أو أن الكود لم يُرسل مؤخراً."
-                        : "Failed to send activation code.")
-            );
+            if (isAlreadySentBackendMessage(err.message)) {
+                recordCodeSent(cooldownKey);
+                setFields((prev) => ({
+                    ...prev,
+                    email: trimmed,
+                    userName: trimmed.split("@")[0].replace(/[^a-zA-Z0-9]/g, "").toUpperCase(),
+                }));
+                setStep(2);
+                setTimeLeft(OTP_EXPIRY_SECONDS);
+                setResendNotice(isAr ? "تم إرسال الكود بالفعل" : "The code has already been sent.");
+            } else {
+                setServerError(
+                    err.message ||
+                        (isAr
+                            ? "فشل إرسال كود التفعيل. تأكد من صحة البريد."
+                            : "Failed to send activation code.")
+                );
+            }
         } finally {
             setIsSendingOtp(false);
         }
@@ -173,19 +206,33 @@ export default function AddUserPage() {
 
     // Resend OTP Code (Step 2 button next to OTP field)
     const handleResendOtp = async () => {
+        const cooldownKey = `add_user_${fields.email}`;
+
+        // 5-minute rule: If requested again within 5 minutes, do not send new code, display "تم إرسال الكود بالفعل"
+        if (isCodeSentWithinCooldown(cooldownKey)) {
+            setResendNotice(isAr ? "تم إرسال الكود بالفعل" : "The code has already been sent.");
+            return;
+        }
+
         setIsResending(true);
         setServerError("");
         setResendNotice("");
         try {
             await requestAddNewUser(fields.email);
+            recordCodeSent(cooldownKey);
             setTimeLeft(OTP_EXPIRY_SECONDS);
             setResendNotice(
                 isAr
-                    ? `تم إعادة إرسال رمز OTP جديد بنجاح إلى (${fields.email})، صالح لمدة 5 دقائق.`
+                    ? `تم إعادة إرسال رمز OTP جديد بنجاح إلى (${fields.email}).`
                     : `New OTP code sent successfully to (${fields.email}).`
             );
         } catch (err) {
-            setServerError(err.message || (isAr ? "فشل إعادة إرسال الكود." : "Failed to resend code."));
+            if (isAlreadySentBackendMessage(err.message)) {
+                recordCodeSent(cooldownKey);
+                setResendNotice(isAr ? "تم إرسال الكود بالفعل" : "The code has already been sent.");
+            } else {
+                setServerError(err.message || (isAr ? "فشل إعادة إرسال الكود." : "Failed to resend code."));
+            }
         } finally {
             setIsResending(false);
         }

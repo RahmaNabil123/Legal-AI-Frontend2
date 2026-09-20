@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-    Scale,
     Sparkles,
     FileText,
     CheckCircle2,
@@ -9,13 +8,10 @@ import {
     Search,
     FilePlus,
     Users,
-    TrendingUp,
     ShieldCheck,
     ArrowUpRight,
-    Landmark,
     AlertCircle,
     ChevronRight,
-    Activity,
     BookOpen,
     Shield,
     UserCheck,
@@ -25,11 +21,11 @@ import {
 import Navbar from "../../components/home/Navbar";
 import { useLanguage } from "../../context/LanguageContext";
 import { useAuth } from "../../context/AuthContext";
-import { getMyOpinions, getPendingOpinions } from "../../services/opinionApi";
+import { getMyOpinions, getAllOpinions } from "../../services/opinionApi";
 import { getUsers } from "../../services/userApi";
 
 export default function DashboardPage() {
-    const { lang, dir } = useLanguage();
+    const { lang } = useLanguage();
     const { user, role, isAdvisor, isManager, isLawyer, isAdmin } = useAuth();
     const navigate = useNavigate();
 
@@ -47,6 +43,9 @@ export default function DashboardPage() {
     // Role-specific live data states
     const [advisorOpinions, setAdvisorOpinions] = useState([]);
     const [pendingReviewsCount, setPendingReviewsCount] = useState(0);
+    const [newPendingCount, setNewPendingCount] = useState(0);
+    const [approvedOpinionsCount, setApprovedOpinionsCount] = useState(0);
+    const [monthOpinionsCount, setMonthOpinionsCount] = useState(0);
     const [pendingOpinionsList, setPendingOpinionsList] = useState([]);
     const [adminUserStats, setAdminUserStats] = useState({
         total: 12,
@@ -54,13 +53,11 @@ export default function DashboardPage() {
         blocked: 2,
         totalDocs: 14820,
     });
-    const [isLoadingData, setIsLoadingData] = useState(false);
 
     // Fetch role-specific widget data
     useEffect(() => {
         let isMounted = true;
         async function fetchWidgetData() {
-            setIsLoadingData(true);
             try {
                 if (isAdvisor) {
                     const data = await getMyOpinions();
@@ -68,10 +65,62 @@ export default function DashboardPage() {
                         setAdvisorOpinions(data);
                     }
                 } else if (isManager) {
-                    const pending = await getPendingOpinions();
-                    if (isMounted && pending) {
+                    const allOps = await getAllOpinions();
+                    if (isMounted && Array.isArray(allOps)) {
+                        // 1. فتاوى تنتظر قرارك الآن (Pending review)
+                        const pending = allOps.filter(
+                            (op) =>
+                                op.status === "Pending" ||
+                                op.statusCode === 1 ||
+                                String(op.status).toLowerCase().includes("pending") ||
+                                String(op.status).includes("انتظار")
+                        );
                         setPendingReviewsCount(pending.length);
                         setPendingOpinionsList(pending.slice(0, 4));
+
+                        // فتاوى جديدة منذ آخر زيارة للمدير
+                        const lastVisitStr = localStorage.getItem("legalai.manager.last_dashboard_visit");
+                        if (lastVisitStr) {
+                            const lastVisitTime = new Date(lastVisitStr).getTime();
+                            const newCount = pending.filter((op) => {
+                                if (!op.createdAt) return false;
+                                return new Date(op.createdAt).getTime() > lastVisitTime;
+                            }).length;
+                            setNewPendingCount(newCount);
+                        } else {
+                            setNewPendingCount(pending.length);
+                        }
+                        localStorage.setItem("legalai.manager.last_dashboard_visit", new Date().toISOString());
+
+                        // 2. فتاوى معتمدة في الـ AI (Approved)
+                        const approved = allOps.filter(
+                            (op) =>
+                                op.status === "Approved" ||
+                                op.statusCode === 2 ||
+                                String(op.status).toLowerCase().includes("approved") ||
+                                String(op.status).includes("معتمد")
+                        );
+                        setApprovedOpinionsCount(approved.length);
+
+                        // 3. إجمالي آراء هذا الشهر (يتجدد تلقائياً كل شهر)
+                        const now = new Date();
+                        const currentYear = now.getFullYear();
+                        const currentMonth = now.getMonth();
+
+                        const thisMonthOpinions = allOps.filter((op) => {
+                            if (!op.createdAt) return false;
+                            try {
+                                const d = new Date(op.createdAt);
+                                return (
+                                    !isNaN(d.getTime()) &&
+                                    d.getFullYear() === currentYear &&
+                                    d.getMonth() === currentMonth
+                                );
+                            } catch {
+                                return false;
+                            }
+                        });
+                        setMonthOpinionsCount(thisMonthOpinions.length);
                     }
                 } else if (isAdmin) {
                     const users = await getUsers();
@@ -89,8 +138,6 @@ export default function DashboardPage() {
                 }
             } catch {
                 // Keep default state gracefully
-            } finally {
-                if (isMounted) setIsLoadingData(false);
             }
         }
         fetchWidgetData();
@@ -191,21 +238,25 @@ export default function DashboardPage() {
                             </h1>
                             <p className="mt-2 text-sm text-slate-300 max-w-2xl leading-relaxed">
                                 {isAr
-                                    ? "لوحة العمل المخصصة لدورك الوظيفي. يمكنك الوصول الفوري لمحرك البحث، ومتابعة الفتاوى وإدارة المنظومة."
+                                    ? (isAdmin
+                                        ? "لوحة العمل المخصصة لدورك الوظيفي. يمكنك إدارة مستخدمي المنظومة ومتابعة الصلاحيات وسجلات النظام."
+                                        : "لوحة العمل المخصصة لدورك الوظيفي. يمكنك الوصول الفوري لمحرك البحث، ومتابعة الفتاوى وإدارة المنظومة.")
                                     : "Your personalized legal intelligence workspace based on your allocated bank role."}
                             </p>
                         </div>
 
                         {/* Direct Shortcuts */}
                         <div className="flex flex-wrap items-center gap-3">
-                            <button
-                                type="button"
-                                onClick={() => navigate("/search")}
-                                className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 hover:bg-blue-500 px-5 py-3 text-xs font-bold text-white shadow-lg shadow-blue-600/30 transition-all hover:scale-105 active:scale-95"
-                            >
-                                <Search className="h-4 w-4" />
-                                <span>{isAr ? "محرك البحث الذكي" : "Semantic Search"}</span>
-                            </button>
+                            {!isAdmin && (
+                                <button
+                                    type="button"
+                                    onClick={() => navigate("/search")}
+                                    className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 hover:bg-blue-500 px-5 py-3 text-xs font-bold text-white shadow-lg shadow-blue-600/30 transition-all hover:scale-105 active:scale-95"
+                                >
+                                    <Search className="h-4 w-4" />
+                                    <span>{isAr ? "محرك البحث الذكي" : "Semantic Search"}</span>
+                                </button>
+                            )}
 
                             {isAdvisor && (
                                 <button
@@ -460,9 +511,16 @@ export default function DashboardPage() {
                                     </span>
                                     <Clock className="h-5 w-5 text-emerald-500" />
                                 </div>
-                                <p className="mt-3 text-3xl font-extrabold text-slate-900 dark:text-white">
-                                    {pendingReviewsCount}
-                                </p>
+                                <div className="mt-3 flex items-baseline gap-2">
+                                    <p className="text-3xl font-extrabold text-slate-900 dark:text-white">
+                                        {pendingReviewsCount}
+                                    </p>
+                                    {newPendingCount > 0 && (
+                                        <span className="inline-flex items-center rounded-full bg-emerald-500/20 px-2 py-0.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 animate-pulse">
+                                            {isAr ? `+${newPendingCount} جديدة` : `+${newPendingCount} new`}
+                                        </span>
+                                    )}
+                                </div>
                                 <p className="text-[11px] text-slate-400 mt-1">
                                     {isAr ? "تتطلب الموافقة أو الرفض أو التعديل" : "Requires Manager Decision"}
                                 </p>
@@ -470,13 +528,13 @@ export default function DashboardPage() {
 
                             <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-5">
                                 <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
-                                    {isAr ? "فتاوى معتمدة في الـ AI" : "Indexed in Legal AI"}
+                                    {isAr ? "فتاوى معتمدة في الـ AI" : "Approved & Indexed in AI"}
                                 </span>
                                 <p className="mt-3 text-3xl font-extrabold text-slate-900 dark:text-white">
-                                    412
+                                    {approvedOpinionsCount}
                                 </p>
                                 <p className="text-[11px] text-emerald-500 font-bold mt-1">
-                                    {isAr ? "أسانيد قضائية نشطة" : "Active Certified Precedents"}
+                                    {isAr ? "فتاوى معتمدة ومفهرسة" : "Active Approved Opinions"}
                                 </p>
                             </div>
 
@@ -485,10 +543,10 @@ export default function DashboardPage() {
                                     {isAr ? "إجمالي آراء هذا الشهر" : "Total Submissions This Month"}
                                 </span>
                                 <p className="mt-3 text-3xl font-extrabold text-slate-900 dark:text-white">
-                                    58
+                                    {monthOpinionsCount}
                                 </p>
                                 <p className="text-[11px] text-slate-400 mt-1">
-                                    {isAr ? "من كافة المستشارين" : "Across Bank Legal Team"}
+                                    {isAr ? "من كافة المستشارين (يتجدد شهرياً)" : "Submitted this month (monthly)"}
                                 </p>
                             </div>
                         </div>

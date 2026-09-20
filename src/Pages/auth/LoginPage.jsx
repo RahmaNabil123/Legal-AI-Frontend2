@@ -1,20 +1,14 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate, Navigate, useLocation } from "react-router-dom";
 import {
     Shield,
     Mail,
     Lock,
-    Eye,
-    EyeOff,
     ShieldCheck,
     FileSearch,
     Landmark,
     Sun,
     Moon,
-    ArrowLeft,
-    ArrowRight,
-    UserCheck,
-    Briefcase,
 } from "lucide-react";
 
 import Button from "../../components/Button/Button";
@@ -32,7 +26,8 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function LoginPage() {
     const navigate = useNavigate();
-    const { setSession } = useAuth();
+    const location = useLocation();
+    const { setSession, isAuthenticated, isManager } = useAuth();
     const { t, lang, setLang, dir } = useLanguage();
     const { isDark, toggleTheme } = useTheme();
 
@@ -42,9 +37,12 @@ export default function LoginPage() {
     });
     const [errors, setErrors] = useState({});
     const [touched, setTouched] = useState({});
-    const [showPassword, setShowPassword] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [serverError, setServerError] = useState("");
+
+    if (isAuthenticated) {
+        return <Navigate to={isManager ? "/dashboard" : "/"} replace />;
+    }
 
     const lp = t.loginPage || {};
 
@@ -89,7 +87,12 @@ export default function LoginPage() {
         try {
             const result = await login(fields.email, fields.password);
             setSession(result);
-            navigate("/dashboard");
+            const userRole = result?.user?.role || result?.role;
+            const isManagerRole = userRole === "Legal Manager";
+            const target = location.state?.from?.pathname
+                ? location.state.from.pathname
+                : (isManagerRole ? "/dashboard" : "/");
+            navigate(target, { replace: true });
         } catch (err) {
             setServerError(getErrorMessage(err));
         } finally {
@@ -103,32 +106,22 @@ export default function LoginPage() {
         { icon: Landmark, text: lp.feature3 || "Built for legal, compliance, and risk teams in banking" },
     ];
 
-    const BackArrow = dir === "rtl" ? ArrowRight : ArrowLeft;
-
     return (
         <div className="flex min-h-screen w-full bg-slate-50 dark:bg-[#070A14] text-slate-900 dark:text-white transition-colors duration-200">
             {/* Left Side: Branding Panel (Hidden on mobile) */}
             <div className="precedent-panel relative hidden w-[46%] flex-col justify-between p-12 lg:flex lg:w-[50%] lg:p-16 text-white">
                 <div className="login-stars" aria-hidden="true" />
 
-                {/* Brand Logo & Back to Home */}
+                {/* Brand Logo */}
                 <div className="relative z-10 flex items-center justify-between">
-                    <Link to="/" className="flex items-center gap-2.5 group">
+                    <div className="flex items-center gap-2.5 group">
                         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600/20 border border-blue-500/30 text-blue-400 shadow-[0_0_15px_rgba(37,99,235,0.3)]">
                             <Shield className="h-5 w-5" aria-hidden="true" />
                         </div>
                         <span className="text-lg font-bold tracking-tight text-white group-hover:text-blue-300 transition-colors">
                             Legal AI
                         </span>
-                    </Link>
-
-                    <Link
-                        to="/"
-                        className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-semibold text-slate-300 hover:bg-white/10 hover:text-white transition-all backdrop-blur-md"
-                    >
-                        <BackArrow className="h-3.5 w-3.5" />
-                        <span>{lp.backToHome || "Back to Home"}</span>
-                    </Link>
+                    </div>
                 </div>
 
                 {/* Center Content */}
@@ -168,12 +161,12 @@ export default function LoginPage() {
             <div className="flex w-full flex-col justify-between p-6 sm:p-12 lg:w-[50%]">
                 {/* Top Controls: Mobile Logo, Theme Switcher, Language Switcher */}
                 <div className="flex items-center justify-between">
-                    <Link to="/" className="flex items-center gap-2 lg:hidden">
+                    <div className="flex items-center gap-2 lg:hidden">
                         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600/20 border border-blue-500/30 text-blue-500">
                             <Shield className="h-5 w-5" aria-hidden="true" />
                         </div>
                         <span className="text-base font-bold text-slate-900 dark:text-white">Legal AI</span>
-                    </Link>
+                    </div>
 
                     <div className="ms-auto flex items-center gap-3">
                         {/* Theme Toggle */}
@@ -248,7 +241,7 @@ export default function LoginPage() {
                                 <Input
                                     id="password"
                                     label={lp.passwordLabel || "كلمة المرور"}
-                                    type={showPassword ? "text" : "password"}
+                                    type="password"
                                     icon={Lock}
                                     placeholder={lp.passwordPlaceholder || "أدخل كلمة المرور"}
                                     autoComplete="current-password"
@@ -258,21 +251,6 @@ export default function LoginPage() {
                                     onBlur={handleBlur("password")}
                                     error={touched.password && errors.password}
                                     disabled={isSubmitting}
-                                    endAction={
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowPassword((prev) => !prev)}
-                                            tabIndex={-1}
-                                            aria-label={showPassword ? "Hide password" : "Show password"}
-                                            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none"
-                                        >
-                                            {showPassword ? (
-                                                <EyeOff className="h-4 w-4" aria-hidden="true" />
-                                            ) : (
-                                                <Eye className="h-4 w-4" aria-hidden="true" />
-                                            )}
-                                        </button>
-                                    }
                                 />
                             </div>
 
@@ -295,14 +273,6 @@ export default function LoginPage() {
                                 : "🔒 For password resets or account assistance, please contact your System Administrator."}
                         </p>
                     </div>
-                </div>
-
-                {/* Mobile Back Link */}
-                <div className="text-center lg:hidden">
-                    <Link to="/" className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-blue-500">
-                        <BackArrow className="h-3 w-3" />
-                        <span>{lp.backToHome || "العودة للرئيسية"}</span>
-                    </Link>
                 </div>
             </div>
         </div>

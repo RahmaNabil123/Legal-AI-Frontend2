@@ -29,47 +29,66 @@ export default function Navbar() {
         session?.user?.firstName || session?.user?.userName || session?.user?.email || "";
 
     // Strictly real navigation links mapped to Backend Controllers & Dashboard:
-    const navLinks = [
-        { to: "/", label: t.nav.home },
-    ];
+    const navLinks = [];
 
     if (isAuthenticated) {
-        navLinks.push({
-            to: "/dashboard",
-            label: isAr ? "لوحة العمل" : "Dashboard",
-        });
-    }
-
-    navLinks.push({ to: "/search", label: t.nav.search });
-
-    if (isAuthenticated) {
-        if (isAdvisor) {
-            navLinks.push({
-                to: "/opinions",
-                label: isAr ? "فتاواي القانونية" : "My Opinions",
-            });
-            navLinks.push({
-                to: "/unknown-questions",
-                label: isAr ? "أسئلة بانتظار فتوى" : "Unanswered Questions",
-            });
-            navLinks.push({
-                to: "/legal-opinion",
-                label: isAr ? "صياغة فتوى جديدة" : "Draft Opinion",
-            });
-        }
-        if (isManager) {
-            navLinks.push({
-                to: "/opinions",
-                label: isAr ? "فتاوى المنظومة" : "All Opinions",
-                badge: "Manager",
-            });
-        }
         if (isAdmin) {
+            navLinks.push({
+                to: "/",
+                label: isAr ? "الرئيسية" : "Home",
+            });
+            navLinks.push({
+                to: "/dashboard",
+                label: isAr ? "لوحة العمل" : "Dashboard",
+            });
             navLinks.push({
                 to: "/users",
                 label: isAr ? "إدارة المستخدمين" : "Users",
                 badge: "Admin",
             });
+            navLinks.push({
+                to: "/users/new",
+                label: isAr ? "إضافة مستخدم جديد" : "Add User",
+            });
+        } else if (isManager) {
+            navLinks.push({
+                to: "/",
+                label: isAr ? "الرئيسية" : "Home",
+            });
+            navLinks.push({
+                to: "/dashboard",
+                label: isAr ? "لوحة العمل" : "Dashboard",
+            });
+            navLinks.push({
+                to: "/search",
+                label: t.nav.search,
+            });
+            navLinks.push({
+                to: "/opinions",
+                label: isAr ? "الفتاوى القانونية" : "Legal Opinions",
+                badge: "Manager",
+            });
+        } else {
+            navLinks.push({
+                to: "/",
+                label: isAr ? "الرئيسية" : "Home",
+            });
+            navLinks.push({ to: "/search", label: t.nav.search });
+
+            if (isAdvisor) {
+                navLinks.push({
+                    to: "/opinions",
+                    label: isAr ? "فتاواي القانونية" : "My Opinions",
+                });
+                navLinks.push({
+                    to: "/unknown-questions",
+                    label: isAr ? "أسئلة بانتظار فتوى" : "Unanswered Questions",
+                });
+                navLinks.push({
+                    to: "/legal-opinion",
+                    label: isAr ? "صياغة فتوى جديدة" : "Draft Opinion",
+                });
+            }
         }
     }
 
@@ -91,7 +110,7 @@ export default function Navbar() {
                 aria-label="Main navigation"
             >
                 {/* Brand Logo */}
-                <Link to="/" className="flex items-center gap-2.5 group flex-shrink-0">
+                <Link to={isAuthenticated ? (isManager ? "/dashboard" : "/") : "/login"} className="flex items-center gap-2.5 group flex-shrink-0">
                     <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600/10 dark:bg-blue-600/20 border border-blue-500/30 dark:border-blue-500/40 text-blue-600 dark:text-blue-400 group-hover:scale-105 transition-all shadow-[0_0_15px_rgba(37,99,235,0.2)]">
                         <Shield className="h-5 w-5" aria-hidden="true" />
                     </div>

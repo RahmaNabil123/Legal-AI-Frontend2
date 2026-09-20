@@ -68,8 +68,6 @@ export function AuthProvider({ children }) {
     const hasRole = (allowedRoles) => {
         if (!allowedRoles || allowedRoles.length === 0) return true;
         if (!role) return false;
-        // Admins also have managerial access if needed
-        if (role === "System Administrator" && allowedRoles.includes("Legal Manager")) return true;
         return allowedRoles.includes(role);
     };
 

@@ -18,22 +18,18 @@ import {
     Scale,
     HelpCircle,
     Shield,
-    RotateCcw,
     X,
     Send,
     MessageSquare,
-    Paperclip,
 } from "lucide-react";
 
 import Navbar from "../../components/home/Navbar";
-import Button from "../../components/Button/Button";
 import Alert from "../../components/Alert/Alert";
 import {
     getOpinionById,
     reviewOpinion,
     resubmitOpinion,
     deleteOpinion,
-    downloadDocumentBySource,
 } from "../../services/opinionApi";
 import { getDocumentForViewing, downloadDocumentByName } from "../../services/searchApi";
 import { getErrorMessage } from "../../services/apiError";
@@ -44,7 +40,7 @@ export default function OpinionDetailPage() {
     const { id } = useParams();
     const navigate = useNavigate();
     const { lang, dir } = useLanguage();
-    const { isManager, isAdvisor, user } = useAuth();
+    const { isManager } = useAuth();
 
     const isAr = lang === "ar";
     const isRtl = dir === "rtl";
@@ -99,7 +95,28 @@ export default function OpinionDetailPage() {
     };
 
     useEffect(() => {
-        fetchOpinionData();
+        let isMounted = true;
+        async function load() {
+            setIsLoading(true);
+            setFetchError(null);
+            try {
+                const data = await getOpinionById(id);
+                if (isMounted) {
+                    setOpinion(data);
+                    setEditTitle(data.title || "");
+                    setEditQuestion(data.question || "");
+                    setEditAnswer(data.answer || "");
+                }
+            } catch (err) {
+                if (isMounted) setFetchError(err);
+            } finally {
+                if (isMounted) setIsLoading(false);
+            }
+        }
+        load();
+        return () => {
+            isMounted = false;
+        };
     }, [id]);
 
     // Action: Manager submits Review Decision (1: Approve, 2: Reject, 3: RevisionRequired)
@@ -220,10 +237,10 @@ export default function OpinionDetailPage() {
     };
 
     const statusCode = Number(opinion?.statusCode) || (opinion?.status === "Approved" ? 2 : opinion?.status === "Rejected" ? 3 : opinion?.status === "RevisionRequired" ? 4 : 1);
-    const isApproved = statusCode === 2 || opinion?.status === "Approved";
-    const isRevisionRequired = statusCode === 4 || opinion?.status === "RevisionRequired";
-    const isPending = statusCode === 1 || opinion?.status === "Pending" || opinion?.status === "Submitted";
-    const isRejected = statusCode === 3 || opinion?.status === "Rejected";
+    const isApproved = statusCode === 2 || opinion?.status === "Approved" || String(opinion?.status).toLowerCase().includes("approved") || String(opinion?.status).includes("معتمد");
+    const isRevisionRequired = statusCode === 4 || opinion?.status === "RevisionRequired" || String(opinion?.status).toLowerCase().includes("revision") || String(opinion?.status).includes("تعديل");
+    const isRejected = statusCode === 3 || opinion?.status === "Rejected" || String(opinion?.status).toLowerCase().includes("rejected") || String(opinion?.status).includes("مرفوض");
+    const isPending = (statusCode === 1 || opinion?.status === "Pending" || opinion?.status === "Submitted" || String(opinion?.status).toLowerCase().includes("pending") || String(opinion?.status).includes("انتظار")) && !isApproved && !isRevisionRequired && !isRejected;
 
     // Format Date
     const formatDate = (dateStr) => {
@@ -258,8 +275,8 @@ export default function OpinionDetailPage() {
                         <span>{isAr ? "العودة لجدول الفتاوى" : "Back to Opinions Table"}</span>
                     </Link>
 
-                    {/* Delete Opinion Button (Allowed for any opinion EXCEPT if Approved) */}
-                    {!isApproved ? (
+                    {/* Delete Opinion Button (Allowed for Advisor draft opinions only, NEVER for Manager or Approved) */}
+                    {!isManager && !isApproved && (
                         <button
                             type="button"
                             onClick={() => setShowDeleteModal(true)}
@@ -268,14 +285,6 @@ export default function OpinionDetailPage() {
                             <Trash2 className="h-4 w-4" />
                             <span>{isAr ? "حذف الفتوى" : "Delete Opinion"}</span>
                         </button>
-                    ) : (
-                        <span
-                            className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-200 dark:border-white/5 bg-slate-100 dark:bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-400 opacity-60 cursor-not-allowed"
-                            title={isAr ? "لا يمكن حذف الفتاوى المعتمدة والمفهرسة" : "Approved opinions cannot be deleted"}
-                        >
-                            <Trash2 className="h-3.5 w-3.5" />
-                            <span>{isAr ? "غير قابلة للحذف (معتمدة)" : "Cannot Delete (Approved)"}</span>
-                        </span>
                     )}
                 </div>
 
@@ -342,12 +351,12 @@ export default function OpinionDetailPage() {
                                             <AlertTriangle className="h-4 w-4" />
                                             <span>{isAr ? "يتطلب تعديل من المستشار" : "Revision Required"}</span>
                                         </span>
-                                    ) : (
+                                    ) : isPending ? (
                                         <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 border border-amber-500/30 px-3.5 py-1.5 text-xs font-bold text-amber-600 dark:text-amber-400">
                                             <Clock className="h-4 w-4" />
                                             <span>{isAr ? "قيد مراجعة المدير" : "Pending Review"}</span>
                                         </span>
-                                    )}
+                                    ) : null}
                                 </div>
                             </div>
 
@@ -376,15 +385,20 @@ export default function OpinionDetailPage() {
                             </div>
                         </div>
 
-                        {/* 2. Revision Alert Banner (If Advisor viewing RevisionRequired) */}
+                        {/* 2. Revision Alert Banner */}
                         {isRevisionRequired && (
                             <div className="rounded-3xl border border-purple-500/30 bg-purple-500/10 p-6 space-y-3">
-                                <div className="flex items-center justify-between">
+                                <div className="flex flex-wrap items-center justify-between gap-3">
                                     <div className="flex items-center gap-2 text-sm font-bold text-purple-600 dark:text-purple-400">
-                                        <AlertTriangle className="h-5 w-5" />
-                                        <span>{isAr ? "تنبيه: مطلوب تعديل على هذه الفتوى من قبل المدير" : "Notice: Revision requested by manager"}</span>
+                                        <AlertTriangle className="h-5 w-5 flex-shrink-0" />
+                                        <span>
+                                            {isManager
+                                                ? (isAr ? "تم إرسال طلب تعديل على هذه الفتوى إلى المستشار القانوني" : "Revision requested from advisor")
+                                                : (isAr ? "تنبيه: مطلوب تعديل على هذه الفتوى من قبل المدير" : "Notice: Revision requested by manager")}
+                                        </span>
                                     </div>
-                                    {!isEditing && (
+                                    {/* Only Advisor / author sees the edit button */}
+                                    {!isManager && !isEditing && (
                                         <button
                                             type="button"
                                             onClick={() => setIsEditing(true)}
@@ -396,15 +410,20 @@ export default function OpinionDetailPage() {
                                     )}
                                 </div>
                                 {opinion.rejectionReason && (
-                                    <p className="text-sm font-medium text-slate-800 dark:text-slate-200 bg-white/60 dark:bg-black/20 p-3.5 rounded-xl">
-                                        "{opinion.rejectionReason}"
-                                    </p>
+                                    <div className="space-y-1">
+                                        <span className="text-[11px] font-extrabold uppercase tracking-wider text-purple-600 dark:text-purple-400">
+                                            {isAr ? "الملاحظات المرسلة للمستشار:" : "Revision Notes:"}
+                                        </span>
+                                        <p className="text-sm font-medium text-slate-800 dark:text-slate-200 bg-white/60 dark:bg-black/20 p-3.5 rounded-xl">
+                                            "{opinion.rejectionReason}"
+                                        </p>
+                                    </div>
                                 )}
                             </div>
                         )}
 
-                        {/* 3. Inline Edit Form (When Advisor clicks Edit) */}
-                        {isEditing ? (
+                        {/* 3. Inline Edit Form (When Advisor clicks Edit - never shown to manager) */}
+                        {!isManager && isEditing ? (
                             <div className="rounded-3xl border border-blue-500/30 bg-white dark:bg-[#0B1120] p-6 sm:p-8 shadow-xl space-y-6">
                                 <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-4">
                                     <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -625,8 +644,8 @@ export default function OpinionDetailPage() {
                             </div>
                         )}
 
-                        {/* 6. Legal Manager Decision Action Panel (Shown only to Legal Managers) */}
-                        {isManager && (
+                        {/* 6. Legal Manager Decision Action Panel (Shown only to Legal Managers when opinion is strictly PENDING review) */}
+                        {isManager && isPending && (
                             <div className="rounded-3xl border border-blue-500/30 bg-white dark:bg-[#0B1120] p-6 sm:p-8 shadow-2xl space-y-4">
                                 <div>
                                     <h3 className="text-lg font-bold text-slate-900 dark:text-white">
@@ -670,6 +689,59 @@ export default function OpinionDetailPage() {
                                         <span>{isAr ? "رفض الفتوى" : "Reject Opinion"}</span>
                                     </button>
                                 </div>
+                            </div>
+                        )}
+
+                        {/* Status Info for Manager after decision is made */}
+                        {isManager && isRevisionRequired && (
+                            <div className="rounded-3xl border border-purple-500/30 bg-purple-500/10 p-6 sm:p-8 space-y-2 shadow-lg">
+                                <div className="flex items-center gap-2.5 text-base font-bold text-purple-600 dark:text-purple-400">
+                                    <AlertTriangle className="h-5 w-5 flex-shrink-0" />
+                                    <span>
+                                        {isAr
+                                            ? "تم إرسال طلب التعديل إلى المستشار القانوني بنجاح"
+                                            : "Revision Requested - Awaiting Advisor Modifications"}
+                                    </span>
+                                </div>
+                                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                                    {isAr
+                                        ? "الفتوى الآن بعهدة المستشار القانوني لإجراء التعديلات المطلوبة، وستعود تلقائياً إلى قائمة المراجعة فور قيام المستشار بإعادة إرسالها."
+                                        : "The opinion is currently with the advisor for editing. It will automatically reappear in your review queue once resubmitted."}
+                                </p>
+                            </div>
+                        )}
+
+                        {isManager && isApproved && (
+                            <div className="rounded-3xl border border-emerald-500/30 bg-emerald-500/10 p-6 sm:p-8 space-y-2 shadow-lg">
+                                <div className="flex items-center gap-2.5 text-base font-bold text-emerald-600 dark:text-emerald-400">
+                                    <CheckCircle2 className="h-5 w-5 flex-shrink-0" />
+                                    <span>
+                                        {isAr
+                                            ? "فتوى قانونية معتمدة ومفهرسة بالذكاء الاصطناعي"
+                                            : "Approved and Indexed Legal Opinion"}
+                                    </span>
+                                </div>
+                                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                                    {isAr
+                                        ? "تم اعتماد هذه الفتوى رسمياً وتدقيقها، وهي مفهرسة ونشطة الآن في محرك الذكاء الاصطناعي."
+                                        : "This opinion has been officially approved and is indexed in the AI precedent engine."}
+                                </p>
+                            </div>
+                        )}
+
+                        {isManager && isRejected && (
+                            <div className="rounded-3xl border border-red-500/30 bg-red-500/10 p-6 sm:p-8 space-y-2 shadow-lg">
+                                <div className="flex items-center gap-2.5 text-base font-bold text-red-600 dark:text-red-400">
+                                    <XCircle className="h-5 w-5 flex-shrink-0" />
+                                    <span>
+                                        {isAr ? "فتوى قانونية مرفوضة" : "Rejected Legal Opinion"}
+                                    </span>
+                                </div>
+                                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                                    {isAr
+                                        ? "تم رفض هذه الفتوى من قبل الإدارة القانونية ولم يتم اعتمادها في الذكاء الاصطناعي."
+                                        : "This opinion has been rejected and is not indexed."}
+                                </p>
                             </div>
                         )}
                     </>

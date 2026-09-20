@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import Navbar from "../../components/home/Navbar";
 import Alert from "../../components/Alert/Alert";
+import Input from "../../components/Input/Input";
 import { useLanguage } from "../../context/LanguageContext";
 import { useAuth } from "../../context/AuthContext";
 import {
@@ -45,6 +46,11 @@ import {
     confirmPasswordReset,
     resetPassword,
 } from "../../services/authApi";
+import {
+    isCodeSentWithinCooldown,
+    recordCodeSent,
+    isAlreadySentBackendMessage,
+} from "../../utils/codeCooldown";
 
 export default function UserDetailPage() {
     const { id } = useParams();
@@ -71,6 +77,7 @@ export default function UserDetailPage() {
     const [emailCode, setEmailCode] = useState("");
     const [emailSubmitting, setEmailSubmitting] = useState(false);
     const [emailError, setEmailError] = useState("");
+    const [emailNotice, setEmailNotice] = useState("");
 
     // Password Reset Workflow State
     const [pwStep, setPwStep] = useState(1);
@@ -80,6 +87,7 @@ export default function UserDetailPage() {
     const [confirmPw, setConfirmPw] = useState("");
     const [pwSubmitting, setPwSubmitting] = useState(false);
     const [pwError, setPwError] = useState("");
+    const [pwNotice, setPwNotice] = useState("");
 
     // Delete workflow state
     const [deleteSubmitting, setDeleteSubmitting] = useState(false);
@@ -100,9 +108,20 @@ export default function UserDetailPage() {
         fetchUser();
     }, [id, isAr]);
 
+    // Check if the viewed user profile is the currently logged-in Admin
+    const isSelf = Boolean(
+        currentUser &&
+        (
+            (id && String(currentUser.id) === String(id)) ||
+            (user && String(currentUser.id) === String(user.id)) ||
+            (currentUser.email && user?.email && currentUser.email.trim().toLowerCase() === user.email.trim().toLowerCase()) ||
+            (currentUser.userName && user?.userName && currentUser.userName.trim().toLowerCase() === user.userName.trim().toLowerCase())
+        )
+    );
+
     // 1. Toggle Activate / Block (Section 4.4)
     const handleToggle = async () => {
-        if (!user) return;
+        if (!user || isSelf) return;
         const targetIsActive = !user.isActive;
         try {
             await toggleUserStatus(user.id, user.isActive);
@@ -135,22 +154,45 @@ export default function UserDetailPage() {
         setNewEmail("");
         setEmailCode("");
         setEmailError("");
+        setEmailNotice("");
         setShowEmailModal(true);
     };
 
     const handleSendEmailCode = async (e) => {
-        e.preventDefault();
-        if (!newEmail.trim() || !newEmail.includes("@")) {
+        if (e && e.preventDefault) e.preventDefault();
+        const trimmed = newEmail.trim();
+        if (!trimmed || !trimmed.includes("@")) {
             setEmailError(isAr ? "يرجى إدخال بريد إلكتروني صحيح." : "Please enter a valid email.");
             return;
         }
+
+        const cooldownKey = `email_change_${user.id}_${trimmed}`;
+
+        // 5-minute rule: If requested again within 5 minutes, do not send new code, display "تم إرسال الكود بالفعل"
+        if (isCodeSentWithinCooldown(cooldownKey)) {
+            setEmailError("");
+            setEmailNotice(isAr ? "تم إرسال الكود بالفعل" : "The code has already been sent.");
+            setEmailStep(2);
+            return;
+        }
+
         setEmailSubmitting(true);
         setEmailError("");
+        setEmailNotice("");
         try {
-            await requestChangeUserEmail(user.id, newEmail.trim());
+            await requestChangeUserEmail(user.id, trimmed);
+            recordCodeSent(cooldownKey);
             setEmailStep(2);
+            setEmailNotice(isAr ? `تم إرسال كود التأكيد إلى (${trimmed}).` : `Verification code sent to (${trimmed}).`);
         } catch (err) {
-            setEmailError(err.message || (isAr ? "فشل إرسال كود التأكيد." : "Failed to send code."));
+            if (isAlreadySentBackendMessage(err.message)) {
+                recordCodeSent(cooldownKey);
+                setEmailError("");
+                setEmailNotice(isAr ? "تم إرسال الكود بالفعل" : "The code has already been sent.");
+                setEmailStep(2);
+            } else {
+                setEmailError(err.message || (isAr ? "فشل إرسال كود التأكيد." : "Failed to send code."));
+            }
         } finally {
             setEmailSubmitting(false);
         }
@@ -197,17 +239,38 @@ export default function UserDetailPage() {
         setNewPassword("");
         setConfirmPw("");
         setPwError("");
+        setPwNotice("");
         setShowPasswordModal(true);
     };
 
     const handleSendPwOtp = async () => {
+        const cooldownKey = `pw_reset_${user.email}`;
+
+        // 5-minute rule: If requested again within 5 minutes, do not send new code, display "تم إرسال الكود بالفعل"
+        if (isCodeSentWithinCooldown(cooldownKey)) {
+            setPwError("");
+            setPwNotice(isAr ? "تم إرسال الكود بالفعل" : "The code has already been sent.");
+            setPwStep(2);
+            return;
+        }
+
         setPwSubmitting(true);
         setPwError("");
+        setPwNotice("");
         try {
             await requestPasswordReset(user.email);
+            recordCodeSent(cooldownKey);
             setPwStep(2);
+            setPwNotice(isAr ? "تم إرسال رمز التحقق OTP إلى بريد المستخدم." : "OTP code sent to user email.");
         } catch (err) {
-            setPwError(err.message || (isAr ? "فشل إرسال رمز OTP." : "Failed to send OTP."));
+            if (isAlreadySentBackendMessage(err.message)) {
+                recordCodeSent(cooldownKey);
+                setPwError("");
+                setPwNotice(isAr ? "تم إرسال الكود بالفعل" : "The code has already been sent.");
+                setPwStep(2);
+            } else {
+                setPwError(err.message || (isAr ? "فشل إرسال رمز OTP." : "Failed to send OTP."));
+            }
         } finally {
             setPwSubmitting(false);
         }
@@ -263,6 +326,14 @@ export default function UserDetailPage() {
     // 4. Delete User Workflow (Danger Zone - Lawyer with zero documents only)
     const handleConfirmDelete = async () => {
         if (!user) return;
+        if (isSelf) {
+            setDeleteError(
+                isAr
+                    ? "لا يمكنك حذف حسابك الحالي المسجل به في المنظومة."
+                    : "You cannot delete your own active account."
+            );
+            return;
+        }
         const isLawyer = user.role === "Lawyer" || user.role === "محامي";
         if (!isLawyer) {
             setDeleteError(
@@ -545,8 +616,14 @@ export default function UserDetailPage() {
                                 <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">
                                     {user.firstName} {user.lastName}
                                 </h1>
-                                <div>
+                                <div className="flex flex-wrap items-center gap-2">
                                     {getRoleBadge(user.role)}
+                                    {isSelf && (
+                                        <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/15 border border-blue-500/30 px-3 py-0.5 text-xs font-bold text-blue-600 dark:text-blue-400">
+                                            <ShieldCheck className="h-3.5 w-3.5" />
+                                            <span>{isAr ? "حسابك الحالي المسجل به" : "Your Logged-in Account"}</span>
+                                        </span>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -559,20 +636,33 @@ export default function UserDetailPage() {
                                 <button
                                     type="button"
                                     onClick={handleToggle}
-                                    className={`inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-xs font-bold transition-all shadow-sm cursor-pointer hover:scale-105 active:scale-95 whitespace-nowrap ${
-                                        user.isActive
-                                            ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 hover:bg-amber-500/25"
-                                            : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25"
+                                    disabled={isSelf}
+                                    className={`inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-xs font-bold transition-all shadow-sm whitespace-nowrap ${
+                                        isSelf
+                                            ? "bg-slate-500/10 text-slate-400 border border-slate-500/20 cursor-not-allowed opacity-60"
+                                            : user.isActive
+                                            ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 hover:bg-amber-500/25 cursor-pointer hover:scale-105 active:scale-95"
+                                            : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25 cursor-pointer hover:scale-105 active:scale-95"
                                     }`}
                                     title={
-                                        user.isActive
+                                        isSelf
+                                            ? (isAr ? "لا يمكنك حظر أو تعطيل حسابك الحالي كمسؤول للنظام" : "You cannot block or deactivate your own active account")
+                                            : user.isActive
                                             ? (isAr ? "حظر الحساب (Block)" : "Block Account")
                                             : (isAr ? "تفعيل الحساب (Activate)" : "Activate Account")
                                     }
                                 >
-                                    <Power className="h-4 w-4" />
+                                    {isSelf ? (
+                                        <Lock className="h-4 w-4" />
+                                    ) : (
+                                        <Power className="h-4 w-4" />
+                                    )}
                                     <span>
-                                        {user.isActive
+                                        {isSelf
+                                            ? isAr
+                                                ? "حسابك الحالي (مؤمّن)"
+                                                : "Your Account (Protected)"
+                                            : user.isActive
                                             ? isAr
                                                 ? "حظر الحساب (Block)"
                                                 : "Block Account"
@@ -1004,7 +1094,6 @@ export default function UserDetailPage() {
 
                     {/* Governance Banners for Deletion Eligibility */}
                     {(() => {
-                        const isSelf = currentUser && String(currentUser.id) === String(user.id);
                         const isLawyer = user.role === "Lawyer" || user.role === "محامي";
                         const hasUploadedDocuments =
                             (user.uploadedDocuments && user.uploadedDocuments.length > 0) ||
@@ -1014,9 +1103,9 @@ export default function UserDetailPage() {
 
                         if (isSelf) {
                             return (
-                                <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-xs font-bold text-red-500 flex items-center gap-3">
-                                    <AlertTriangle className="h-5 w-5 flex-shrink-0" />
-                                    <p>{isAr ? "لا يمكنك حذف حسابك الشخصي المسجل به حالياً في المنظومة." : "Cannot delete your own logged-in account."}</p>
+                                <div className="rounded-2xl border border-blue-500/30 bg-blue-500/10 p-4 text-xs font-bold text-blue-500 flex items-center gap-3">
+                                    <ShieldCheck className="h-5 w-5 flex-shrink-0" />
+                                    <p>{isAr ? "هذا هو حسابك الحالي المسجل به كمسؤول للنظام — محمي بالكامل من التعطيل أو الحذف." : "This is your active administrator account — protected from deactivation or deletion."}</p>
                                 </div>
                             );
                         }
@@ -1082,7 +1171,6 @@ export default function UserDetailPage() {
                         </div>
 
                         {(() => {
-                            const isSelf = currentUser && String(currentUser.id) === String(user.id);
                             const isLawyer = user.role === "Lawyer" || user.role === "محامي";
                             const hasUploadedDocuments =
                                 (user.uploadedDocuments && user.uploadedDocuments.length > 0) ||
@@ -1194,6 +1282,12 @@ export default function UserDetailPage() {
                                 : "Administrator workflow to update user institutional email."}
                         </p>
 
+                        {emailNotice && (
+                            <div className="mb-4">
+                                <Alert variant="info">{emailNotice}</Alert>
+                            </div>
+                        )}
+
                         {emailError && (
                             <div className="mb-4">
                                 <Alert>{emailError}</Alert>
@@ -1256,6 +1350,24 @@ export default function UserDetailPage() {
                                     {emailSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                                     <span>{isAr ? "تأكيد واعتماد البريد الجديد (الخطوة 2)" : "Confirm & Update Email"}</span>
                                 </button>
+
+                                <div className="flex items-center justify-between text-xs pt-1">
+                                    <button
+                                        type="button"
+                                        onClick={handleSendEmailCode}
+                                        disabled={emailSubmitting}
+                                        className="font-bold text-blue-500 hover:text-blue-400 transition-colors"
+                                    >
+                                        {isAr ? "إعادة إرسال الكود" : "Resend Code"}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => { setEmailStep(1); setEmailNotice(""); setEmailError(""); }}
+                                        className="font-bold text-slate-500 hover:text-slate-300 transition-colors"
+                                    >
+                                        {isAr ? "تعديل البريد" : "Edit Email"}
+                                    </button>
+                                </div>
                             </form>
                         )}
                     </div>
@@ -1286,6 +1398,12 @@ export default function UserDetailPage() {
                                 ? `إجراء أمني لإعادة ضبط كلمة المرور لحساب (${user.email}).`
                                 : `Security workflow to reset password for (${user.email}).`}
                         </p>
+
+                        {pwNotice && (
+                            <div className="mb-4">
+                                <Alert variant="info">{pwNotice}</Alert>
+                            </div>
+                        )}
 
                         {pwError && (
                             <div className="mb-4">
@@ -1346,6 +1464,17 @@ export default function UserDetailPage() {
                                     {pwSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                                     <span>{isAr ? "التحقق من الكود والانتقال للباسورد (الخطوة 2)" : "Verify OTP Code"}</span>
                                 </button>
+
+                                <div className="flex items-center justify-between text-xs pt-1">
+                                    <button
+                                        type="button"
+                                        onClick={handleSendPwOtp}
+                                        disabled={pwSubmitting}
+                                        className="font-bold text-purple-500 hover:text-purple-400 transition-colors"
+                                    >
+                                        {isAr ? "إعادة إرسال الكود" : "Resend Code"}
+                                    </button>
+                                </div>
                             </form>
                         )}
 
@@ -1358,35 +1487,29 @@ export default function UserDetailPage() {
                                         : "Step 3: Verification passed. Set new password."}
                                 </div>
 
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                                        {isAr ? "كلمة المرور الجديدة *" : "New Password *"}
-                                    </label>
-                                    <input
-                                        type="password"
-                                        required
-                                        minLength={6}
-                                        value={newPassword}
-                                        onChange={(e) => setNewPassword(e.target.value)}
-                                        placeholder="••••••••"
-                                        className="w-full rounded-2xl border border-slate-200 dark:border-white/15 bg-slate-50 dark:bg-white/5 p-3 text-xs text-slate-900 dark:text-white focus:border-purple-500 focus:outline-none"
-                                    />
-                                </div>
+                                <Input
+                                    id="admin-new-password"
+                                    label={isAr ? "كلمة المرور الجديدة *" : "New Password *"}
+                                    type="password"
+                                    required
+                                    minLength={6}
+                                    value={newPassword}
+                                    onChange={(e) => setNewPassword(e.target.value)}
+                                    placeholder="••••••••"
+                                    icon={Lock}
+                                />
 
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                                        {isAr ? "تأكيد كلمة المرور *" : "Confirm Password *"}
-                                    </label>
-                                    <input
-                                        type="password"
-                                        required
-                                        minLength={6}
-                                        value={confirmPw}
-                                        onChange={(e) => setConfirmPw(e.target.value)}
-                                        placeholder="••••••••"
-                                        className="w-full rounded-2xl border border-slate-200 dark:border-white/15 bg-slate-50 dark:bg-white/5 p-3 text-xs text-slate-900 dark:text-white focus:border-purple-500 focus:outline-none"
-                                    />
-                                </div>
+                                <Input
+                                    id="admin-confirm-password"
+                                    label={isAr ? "تأكيد كلمة المرور *" : "Confirm Password *"}
+                                    type="password"
+                                    required
+                                    minLength={6}
+                                    value={confirmPw}
+                                    onChange={(e) => setConfirmPw(e.target.value)}
+                                    placeholder="••••••••"
+                                    icon={Lock}
+                                />
 
                                 <button
                                     type="submit"

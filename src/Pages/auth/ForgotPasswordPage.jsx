@@ -21,6 +21,11 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useTheme } from "../../context/ThemeContext";
 import { ApiError } from "../../services/apiError";
 import { requestPasswordReset, confirmPasswordReset, resetPassword } from "../../services/authApi";
+import {
+    isCodeSentWithinCooldown,
+    recordCodeSent,
+    isAlreadySentBackendMessage,
+} from "../../utils/codeCooldown";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -37,6 +42,7 @@ export default function ForgotPasswordPage() {
     const [showPassword, setShowPassword] = useState(false);
 
     const [error, setError] = useState("");
+    const [notice, setNotice] = useState("");
     const [isLoading, setIsLoading] = useState(false);
 
     const isAr = lang === "ar";
@@ -45,23 +51,44 @@ export default function ForgotPasswordPage() {
     const [resetToken, setResetToken] = useState("");
 
     const handleSendCode = async (e) => {
-        e.preventDefault();
+        if (e && e.preventDefault) e.preventDefault();
         setError("");
-        if (!email.trim()) {
+        setNotice("");
+        const trimmedEmail = email.trim();
+        if (!trimmedEmail) {
             setError(isAr ? "يرجى إدخال البريد الإلكتروني." : "Please enter your email.");
             return;
         }
-        if (!EMAIL_REGEX.test(email.trim())) {
+        if (!EMAIL_REGEX.test(trimmedEmail)) {
             setError(isAr ? "يرجى إدخال بريد إلكتروني صالح." : "Please enter a valid email address.");
+            return;
+        }
+
+        const cooldownKey = `forgot_pw_${trimmedEmail}`;
+
+        // 5-minute rule: If requested again within 5 minutes, do not send new code, display "تم إرسال الكود بالفعل"
+        if (isCodeSentWithinCooldown(cooldownKey)) {
+            setError("");
+            setNotice(isAr ? "تم إرسال الكود بالفعل" : "The code has already been sent.");
+            setStep(2);
             return;
         }
 
         setIsLoading(true);
         try {
-            await requestPasswordReset(email.trim());
+            await requestPasswordReset(trimmedEmail);
+            recordCodeSent(cooldownKey);
             setStep(2);
+            setNotice(isAr ? `تم إرسال رمز التحقق إلى ${trimmedEmail}.` : `Verification code sent to ${trimmedEmail}.`);
         } catch (err) {
-            setError(err.message || (isAr ? "تعذر إرسال رمز التحقق. حاول مجدداً." : "Failed to send reset code."));
+            if (isAlreadySentBackendMessage(err.message)) {
+                recordCodeSent(cooldownKey);
+                setError("");
+                setNotice(isAr ? "تم إرسال الكود بالفعل" : "The code has already been sent.");
+                setStep(2);
+            } else {
+                setError(err.message || (isAr ? "تعذر إرسال رمز التحقق. حاول مجدداً." : "Failed to send reset code."));
+            }
         } finally {
             setIsLoading(false);
         }
@@ -257,6 +284,12 @@ export default function ForgotPasswordPage() {
                                         : `Verification code sent to ${email}.`}
                                 </p>
 
+                                {notice && (
+                                    <div className="mt-4">
+                                        <Alert variant="info">{notice}</Alert>
+                                    </div>
+                                )}
+
                                 {error && (
                                     <div className="mt-4">
                                         <Alert>{error}</Alert>
@@ -279,28 +312,19 @@ export default function ForgotPasswordPage() {
                                     <Input
                                         id="new-password"
                                         label={isAr ? "كلمة المرور الجديدة" : "New Password"}
-                                        type={showPassword ? "text" : "password"}
+                                        type="password"
                                         icon={Lock}
                                         placeholder="••••••••"
                                         required
                                         value={newPassword}
                                         onChange={(e) => setNewPassword(e.target.value)}
                                         disabled={isLoading}
-                                        endAction={
-                                            <button
-                                                type="button"
-                                                onClick={() => setShowPassword((p) => !p)}
-                                                className="text-slate-400 hover:text-slate-200"
-                                            >
-                                                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                            </button>
-                                        }
                                     />
 
                                     <Input
                                         id="confirm-password"
                                         label={isAr ? "تأكيد كلمة المرور" : "Confirm Password"}
-                                        type={showPassword ? "text" : "password"}
+                                        type="password"
                                         icon={Lock}
                                         placeholder="••••••••"
                                         required
@@ -320,13 +344,23 @@ export default function ForgotPasswordPage() {
                                                 : "Confirm New Password"}
                                         </Button>
 
-                                        <button
-                                            type="button"
-                                            onClick={() => setStep(1)}
-                                            className="w-full text-center text-xs font-semibold text-slate-500 hover:text-blue-500 transition-colors py-1"
-                                        >
-                                            {isAr ? "تغيير البريد الإلكتروني" : "Change Email"}
-                                        </button>
+                                        <div className="flex items-center justify-between text-xs pt-1">
+                                            <button
+                                                type="button"
+                                                onClick={handleSendCode}
+                                                disabled={isLoading}
+                                                className="font-bold text-purple-600 dark:text-purple-400 hover:underline transition-colors py-1"
+                                            >
+                                                {isAr ? "إعادة إرسال الكود" : "Resend Code"}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => { setStep(1); setNotice(""); setError(""); }}
+                                                className="font-semibold text-slate-500 hover:text-blue-500 transition-colors py-1"
+                                            >
+                                                {isAr ? "تغيير البريد الإلكتروني" : "Change Email"}
+                                            </button>
+                                        </div>
                                     </div>
                                 </form>
                             </>

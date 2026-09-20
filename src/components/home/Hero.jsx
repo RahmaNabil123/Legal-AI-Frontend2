@@ -1,10 +1,12 @@
 import { Link } from "react-router-dom";
-import { Sparkles, Clock, ArrowRight, ScanLine, FileText } from "lucide-react";
+import { Sparkles, Clock, ArrowRight, ScanLine, FileText, Users, UserPlus, Scale } from "lucide-react";
 import { useLanguage } from "../../context/LanguageContext";
+import { useAuth } from "../../context/AuthContext";
 import "./Hero.css";
 
 export default function Hero() {
-    const { t } = useLanguage();
+    const { t, lang } = useLanguage();
+    const { isAdmin, isManager } = useAuth();
 
     return (
         <section className="hero-container relative px-6 pt-12 pb-24 lg:px-12 lg:pt-16 lg:pb-32 text-slate-900 dark:text-white transition-colors duration-300">
@@ -45,21 +47,59 @@ export default function Hero() {
 
                         {/* CTA Buttons */}
                         <div className="flex flex-wrap items-center gap-4 pt-2 w-full sm:w-auto">
-                            <Link
-                                to="/search"
-                                className="cta-glow-btn inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-sm font-bold shadow-lg"
-                            >
-                                <ScanLine className="h-4 w-4" aria-hidden="true" />
-                                <span>{t.hero.ctaPrimary}</span>
-                            </Link>
+                            {isAdmin ? (
+                                <>
+                                    <Link
+                                        to="/users"
+                                        className="cta-glow-btn inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-sm font-bold shadow-lg"
+                                    >
+                                        <Users className="h-4 w-4" aria-hidden="true" />
+                                        <span>{lang === "ar" ? "إدارة المستخدمين" : "User Management"}</span>
+                                    </Link>
+                                    <Link
+                                        to="/users/new"
+                                        className="cta-ghost-btn inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 dark:border-white/10 bg-white/70 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 px-6 py-3.5 text-sm font-semibold text-slate-800 dark:text-white transition-all shadow-sm"
+                                    >
+                                        <UserPlus className="h-4 w-4" aria-hidden="true" />
+                                        <span>{lang === "ar" ? "إضافة مستخدم جديد" : "Add New User"}</span>
+                                    </Link>
+                                </>
+                            ) : isManager ? (
+                                <>
+                                    <Link
+                                        to="/search"
+                                        className="cta-glow-btn inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-sm font-bold shadow-lg"
+                                    >
+                                        <ScanLine className="h-4 w-4" aria-hidden="true" />
+                                        <span>{lang === "ar" ? "البحث في القوانين" : "Search Precedents"}</span>
+                                    </Link>
+                                    <Link
+                                        to="/opinions"
+                                        className="cta-ghost-btn inline-flex items-center justify-center gap-2 rounded-xl border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 px-6 py-3.5 text-sm font-semibold text-purple-700 dark:text-purple-300 transition-all shadow-sm"
+                                    >
+                                        <Scale className="h-4 w-4" aria-hidden="true" />
+                                        <span>{lang === "ar" ? "الفتاوى القانونية" : "Legal Opinions"}</span>
+                                    </Link>
+                                </>
+                            ) : (
+                                <>
+                                    <Link
+                                        to="/search"
+                                        className="cta-glow-btn inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-sm font-bold shadow-lg"
+                                    >
+                                        <ScanLine className="h-4 w-4" aria-hidden="true" />
+                                        <span>{t.hero.ctaPrimary}</span>
+                                    </Link>
 
-                            <a
-                                href="#features"
-                                className="cta-ghost-btn inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 dark:border-white/10 bg-white/70 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 px-6 py-3.5 text-sm font-semibold text-slate-800 dark:text-white transition-all shadow-sm"
-                            >
-                                <span>{t.hero.ctaSecondary}</span>
-                                <ArrowRight className="h-4 w-4 rtl:rotate-180 text-slate-500 dark:text-slate-400" aria-hidden="true" />
-                            </a>
+                                    <a
+                                        href="#features"
+                                        className="cta-ghost-btn inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 dark:border-white/10 bg-white/70 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 px-6 py-3.5 text-sm font-semibold text-slate-800 dark:text-white transition-all shadow-sm"
+                                    >
+                                        <span>{t.hero.ctaSecondary}</span>
+                                        <ArrowRight className="h-4 w-4 rtl:rotate-180 text-slate-500 dark:text-slate-400" aria-hidden="true" />
+                                    </a>
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>
