@@ -313,7 +313,7 @@ export default function ReviewOpinionPage() {
                             <div className="rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0B1120]/90 p-6 shadow-2xl backdrop-blur-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                                 <div>
                                     <p className="text-sm font-bold text-slate-900 dark:text-white">
-                                        {isAr ? "قرار المدير القانوني (Review Decision)" : "Legal Manager Decision"}
+                                        {isAr ? "قرار المدير القانوني" : "Legal Manager Decision"}
                                     </p>
                                     <p className="text-xs text-slate-500 dark:text-slate-400">
                                         {isAr

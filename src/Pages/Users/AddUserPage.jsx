@@ -345,7 +345,7 @@ export default function AddUserPage() {
                             }`}
                         >
                             <span>1</span>
-                            <span>{isAr ? "التحقق من البريد (OTP)" : "Email OTP"}</span>
+                            <span>{isAr ? "التحقق من البريد" : "Email OTP"}</span>
                             {step > 1 && <CheckCircle2 className="h-3.5 w-3.5" />}
                         </div>
 
@@ -438,7 +438,7 @@ export default function AddUserPage() {
                                 ) : (
                                     <Send className="h-4 w-4" />
                                 )}
-                                <span>{isAr ? "إرسال رمز التفعيل (OTP) والانتقال للخطوة 2" : "Send Activation Code & Proceed"}</span>
+                                <span>{isAr ? "إرسال رمز التفعيل والانتقال للخطوة 2" : "Send Activation Code & Proceed"}</span>
                             </button>
                         </form>
                     </div>
@@ -631,7 +631,7 @@ export default function AddUserPage() {
                                 <div>
                                     <h4 className="text-xs font-extrabold text-blue-500 flex items-center gap-1.5">
                                         <KeyRoundIcon className="h-4 w-4" />
-                                        <span>{isAr ? "تأكيد رمز التحقق (OTP Code) *" : "Confirm OTP Code *"}</span>
+                                        <span>{isAr ? "تأكيد رمز التحقق *" : "Confirm OTP Code *"}</span>
                                     </h4>
                                     <p className="text-[11px] text-slate-400 mt-0.5">
                                         {isAr

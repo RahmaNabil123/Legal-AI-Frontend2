@@ -109,16 +109,16 @@ export default function LoginPage() {
     return (
         <div className="flex min-h-screen w-full bg-slate-50 dark:bg-[#070A14] text-slate-900 dark:text-white transition-colors duration-200">
             {/* Left Side: Branding Panel (Hidden on mobile) */}
-            <div className="precedent-panel relative hidden w-[46%] flex-col justify-between p-12 lg:flex lg:w-[50%] lg:p-16 text-white">
+            <div className="precedent-panel relative hidden w-[46%] flex-col justify-between p-12 lg:flex lg:w-[50%] lg:p-16 text-slate-900 dark:text-white border-e border-slate-200/80 dark:border-white/10">
                 <div className="login-stars" aria-hidden="true" />
 
                 {/* Brand Logo */}
                 <div className="relative z-10 flex items-center justify-between">
                     <div className="flex items-center gap-2.5 group">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600/20 border border-blue-500/30 text-blue-400 shadow-[0_0_15px_rgba(37,99,235,0.3)]">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600/10 dark:bg-blue-600/20 border border-blue-500/30 text-blue-600 dark:text-blue-400 shadow-[0_0_15px_rgba(37,99,235,0.15)]">
                             <Shield className="h-5 w-5" aria-hidden="true" />
                         </div>
-                        <span className="text-lg font-bold tracking-tight text-white group-hover:text-blue-300 transition-colors">
+                        <span className="text-lg font-bold tracking-tight text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-300 transition-colors">
                             Legal AI
                         </span>
                     </div>
@@ -126,23 +126,23 @@ export default function LoginPage() {
 
                 {/* Center Content */}
                 <div className="relative z-10 my-auto py-12 max-w-lg">
-                    <div className="inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-1.5 text-xs font-bold text-blue-400 mb-6">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-blue-200 dark:border-blue-500/30 bg-blue-50 dark:bg-blue-500/10 px-4 py-1.5 text-xs font-bold text-blue-700 dark:text-blue-400 mb-6 shadow-xs">
                         <span>{lp.brandSubtitle || "Banking Precedent Intelligence"}</span>
                     </div>
 
-                    <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl text-white leading-tight">
+                    <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl text-slate-950 dark:text-white leading-tight">
                         {lp.heroTitle || "Precedent intelligence for banking legal teams."}
                     </h1>
 
-                    <p className="mt-4 text-sm text-slate-300 leading-relaxed font-normal">
+                    <p className="mt-4 text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-normal">
                         {lp.heroDesc || "Search, cross-examine, and cite judicial precedents across your institution's history."}
                     </p>
 
                     {/* Features List */}
                     <div className="mt-8 space-y-3.5">
                         {features.map((feat, i) => (
-                            <div key={i} className="flex items-center gap-3 text-xs sm:text-sm text-slate-200">
-                                <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                            <div key={i} className="flex items-center gap-3 text-xs sm:text-sm text-slate-800 dark:text-slate-200 font-medium">
+                                <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-500/30 shadow-xs">
                                     <feat.icon className="h-4 w-4" aria-hidden="true" />
                                 </div>
                                 <span>{feat.text}</span>
@@ -152,7 +152,7 @@ export default function LoginPage() {
                 </div>
 
                 {/* Bottom Footer */}
-                <p className="relative z-10 text-xs text-slate-400">
+                <p className="relative z-10 text-xs text-slate-500 dark:text-slate-400">
                     &copy; {new Date().getFullYear()} Legal AI Systems. {dir === "rtl" ? "سري — للاستخدام المصرح به فقط." : "Confidential — authorized use only."}
                 </p>
             </div>
@@ -269,7 +269,7 @@ export default function LoginPage() {
                     <div className="mt-6 text-center">
                         <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
                             {lang === "ar"
-                                ? "🔒 في حال نسيان كلمة المرور أو فقدان الوصول، يرجى مراجعة مسؤول النظام (Administrator) لإعادة تعيين الحساب."
+                                ? "🔒 في حال نسيان كلمة المرور أو فقدان الوصول، يرجى مراجعة مسؤول النظام لإعادة تعيين الحساب."
                                 : "🔒 For password resets or account assistance, please contact your System Administrator."}
                         </p>
                     </div>

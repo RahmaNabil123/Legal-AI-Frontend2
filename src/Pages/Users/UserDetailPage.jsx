@@ -338,7 +338,7 @@ export default function UserDetailPage() {
         if (!isLawyer) {
             setDeleteError(
                 isAr
-                    ? "الحذف متاح فقط لحسابات المحامين العاديين، ولا يمكن حذف المستشارين أو المديرين أو مسؤولي النظام. يمكنك فقط حظر الحساب (Block)."
+                    ? "الحذف متاح فقط لحسابات المحامين العاديين، ولا يمكن حذف المستشارين أو المديرين أو مسؤولي النظام. يمكنك فقط حظر الحساب."
                     : "Deletion is only allowed for regular Lawyer accounts. Other roles can only be blocked."
             );
             return;
@@ -353,7 +353,7 @@ export default function UserDetailPage() {
         if (hasUploadedDocuments) {
             setDeleteError(
                 isAr
-                    ? "لا يمكن حذف هذا المستخدم لوجود مستندات مرفوعة مسجلة باسمه في المنظومة. يمكنك فقط حظر الحساب (Block)."
+                    ? "لا يمكن حذف هذا المستخدم لوجود مستندات مرفوعة مسجلة باسمه في المنظومة. يمكنك فقط حظر الحساب."
                     : "Cannot delete user with uploaded documents on the system. You can only block the account."
             );
             return;
@@ -648,8 +648,8 @@ export default function UserDetailPage() {
                                         isSelf
                                             ? (isAr ? "لا يمكنك حظر أو تعطيل حسابك الحالي كمسؤول للنظام" : "You cannot block or deactivate your own active account")
                                             : user.isActive
-                                            ? (isAr ? "حظر الحساب (Block)" : "Block Account")
-                                            : (isAr ? "تفعيل الحساب (Activate)" : "Activate Account")
+                                            ? (isAr ? "حظر الحساب" : "Block Account")
+                                            : (isAr ? "تفعيل الحساب" : "Activate Account")
                                     }
                                 >
                                     {isSelf ? (
@@ -664,10 +664,10 @@ export default function UserDetailPage() {
                                                 : "Your Account (Protected)"
                                             : user.isActive
                                             ? isAr
-                                                ? "حظر الحساب (Block)"
+                                                ? "حظر الحساب"
                                                 : "Block Account"
                                             : isAr
-                                            ? "تفعيل الحساب (Activate)"
+                                            ? "تفعيل الحساب"
                                             : "Activate Account"}
                                     </span>
                                 </button>
@@ -1065,7 +1065,7 @@ export default function UserDetailPage() {
                         </div>
                         <div>
                             <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
-                                {isAr ? "حساب إدارة النظام (System Administrator)" : "System Administrator Account"}
+                                {isAr ? "حساب إدارة النظام" : "System Administrator Account"}
                             </h3>
                             <p className="text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
                                 {isAr
@@ -1086,7 +1086,7 @@ export default function UserDetailPage() {
                             </h3>
                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
                                 {isAr
-                                    ? "جميع الحسابات بالمنظومة متاح حظرها (Block)، أما الحذف النهائي (Delete) فيشترط أن يكون المستخدم محامي عادي فقط وليس لديه أي مستندات مرفوعة على السيستم."
+                                    ? "جميع الحسابات بالمنظومة متاح حظرها، أما الحذف النهائي فيشترط أن يكون المستخدم محامي عادي فقط وليس لديه أي مستندات مرفوعة على السيستم."
                                     : "All accounts can be blocked. Deletion is strictly restricted to regular Lawyers with zero uploaded documents."}
                             </p>
                         </div>
@@ -1120,7 +1120,7 @@ export default function UserDetailPage() {
                                         </p>
                                         <p className="mt-0.5 text-xs text-amber-400 font-medium leading-relaxed">
                                             {isAr
-                                                ? "الحذف متاح فقط للمستخدم العادي (محامي). لا يمكن حذف حسابات المستشارين أو المديرين أو مسؤولي النظام، ويمكنك فقط حظر الحساب (Block)."
+                                                ? "الحذف متاح فقط للمستخدم العادي (محامي). لا يمكن حذف حسابات المستشارين أو المديرين أو مسؤولي النظام، ويمكنك فقط حظر الحساب."
                                                 : "Deletion is only allowed for regular Lawyers. Other roles can only be blocked."}
                                         </p>
                                     </div>
@@ -1138,7 +1138,7 @@ export default function UserDetailPage() {
                                         </p>
                                         <p className="mt-0.5 text-xs text-amber-400 font-medium leading-relaxed">
                                             {isAr
-                                                ? "لا يمكن حذف هذا المستخدم لوجود مستندات أو قوانين مرفوعة باسمه على السيستم. الإجراء المتاح هو حظر الحساب فقط (Block)."
+                                                ? "لا يمكن حذف هذا المستخدم لوجود مستندات أو قوانين مرفوعة باسمه على السيستم. الإجراء المتاح هو حظر الحساب فقط."
                                                 : "Cannot delete user with uploaded documents on the system. You can only block the account."}
                                         </p>
                                     </div>
@@ -1151,7 +1151,7 @@ export default function UserDetailPage() {
                                 <ShieldCheck className="h-4 w-4 flex-shrink-0" />
                                 <span>
                                     {isAr
-                                        ? "هذا المستخدم مؤهل للحذف (محامي عادي بدون مستندات مرفوعة). يشترط حظر الحساب (Block) أولاً قبل الحذف."
+                                        ? "هذا المستخدم مؤهل للحذف (محامي عادي بدون مستندات مرفوعة). يشترط حظر الحساب أولاً قبل الحذف."
                                         : "This user is eligible for deletion (Lawyer with no uploaded documents). Must be blocked first."}
                                 </span>
                             </div>
@@ -1197,7 +1197,7 @@ export default function UserDetailPage() {
                                                 setActionNotice({
                                                     type: "error",
                                                     message: isAr
-                                                        ? "الحذف متاح فقط لحسابات المحامين العاديين، ويمكنك فقط حظر هذا الحساب (Block)."
+                                                        ? "الحذف متاح فقط لحسابات المحامين العاديين، ويمكنك فقط حظر هذا الحساب."
                                                         : "Deletion is only allowed for regular Lawyers. You can only block this account.",
                                                 });
                                                 return;
@@ -1206,7 +1206,7 @@ export default function UserDetailPage() {
                                                 setActionNotice({
                                                     type: "error",
                                                     message: isAr
-                                                        ? "ممنوع حذف مستخدم لديه مستندات مرفوعة على السيستم! يمكنك فقط حظر الحساب (Block)."
+                                                        ? "ممنوع حذف مستخدم لديه مستندات مرفوعة على السيستم! يمكنك فقط حظر الحساب."
                                                         : "Cannot delete user with uploaded documents on the system! You can only block.",
                                                 });
                                                 return;
@@ -1218,7 +1218,7 @@ export default function UserDetailPage() {
                                             setActionNotice({
                                                 type: "error",
                                                 message: isAr
-                                                    ? "لا يمكن حذف مستخدم نشط! يرجى حظر الحساب (Block) أولاً قبل تنفيذ عملية الحذف."
+                                                    ? "لا يمكن حذف مستخدم نشط! يرجى حظر الحساب أولاً قبل تنفيذ عملية الحذف."
                                                     : "Cannot delete active user! Please block the account first.",
                                             });
                                             return;
@@ -1416,7 +1416,7 @@ export default function UserDetailPage() {
                             <div className="space-y-4">
                                 <div className="p-3 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-xs text-purple-400">
                                     {isAr
-                                        ? "الخطوة 1: انقر أدناه لإرسال رمز التحقق (OTP) إلى بريد المستخدم المسجل."
+                                        ? "الخطوة 1: انقر أدناه لإرسال رمز التحقق إلى بريد المستخدم المسجل."
                                         : "Step 1: Click below to generate an OTP code."}
                                 </div>
 
@@ -1427,7 +1427,7 @@ export default function UserDetailPage() {
                                     className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-purple-600 hover:bg-purple-500 p-3.5 text-xs font-bold text-white shadow-md transition-all disabled:opacity-50"
                                 >
                                     {pwSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                                    <span>{isAr ? "إرسال رمز التحقق OTP (الخطوة 1)" : "Send OTP Code"}</span>
+                                    <span>{isAr ? "إرسال رمز التحقق (الخطوة 1)" : "Send OTP Code"}</span>
                                 </button>
                             </div>
                         )}
@@ -1437,13 +1437,13 @@ export default function UserDetailPage() {
                             <form onSubmit={handleVerifyPwOtp} className="space-y-4">
                                 <div className="p-3 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-xs text-purple-400">
                                     {isAr
-                                        ? "الخطوة 2: أدخل رمز التحقق (OTP) المرسل للتأكد من الصلاحية واستخراج توكن إعادة التعيين."
+                                        ? "الخطوة 2: أدخل رمز التحقق المرسل للتأكد من الصلاحية واستخراج توكن إعادة التعيين."
                                         : "Step 2: Enter the received OTP code."}
                                 </div>
 
                                 <div>
                                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                                        {isAr ? "رمز التحقق OTP *" : "OTP Code *"}
+                                        {isAr ? "رمز التحقق *" : "OTP Code *"}
                                     </label>
                                     <input
                                         type="text"

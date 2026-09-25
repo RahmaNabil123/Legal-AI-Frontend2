@@ -33,8 +33,22 @@ export default function App() {
           <BrowserRouter>
             <Routes>
               {/* Public Entry & Authentication */}
-              <Route path="/" element={<HomePage />} />
-              <Route path="/home" element={<HomePage />} />
+              <Route
+                path="/"
+                element={
+                  <ProtectedRoute>
+                    <HomePage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/home"
+                element={
+                  <ProtectedRoute>
+                    <HomePage />
+                  </ProtectedRoute>
+                }
+              />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/forgot-password" element={<Navigate to="/login" replace />} />
 

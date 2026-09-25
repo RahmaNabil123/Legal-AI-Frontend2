@@ -12,7 +12,7 @@ import { request } from "./httpClient";
  * 4. POST   /api/PrivilegesAdmin/ConfirmAddUser       -> [FromForm] RegisterDTO + role (Step 2)
  * 5. PATCH  /api/PrivilegesAdmin/User/{id}/Block      -> Sets IsActive = false
  * 6. PATCH  /api/PrivilegesAdmin/User/{id}/Activate   -> Sets IsActive = true
- * 7. DELETE /api/PrivilegesAdmin/DeleteUser/{id}     -> Hard deletes blocked user
+ * 7. DELETE /api/PrivilegesAdmin/User/{id}           -> Hard deletes blocked user
  *
  * RolesDTO enum:
  * Lawyer = 1, Legal_Advisor = 2, Legal_Manager = 3, System_Administrator = 4
@@ -392,7 +392,7 @@ export async function toggleUserStatus(id, currentIsActive) {
 }
 
 /**
- * DELETE /api/Admin/Users/{id} or /api/PrivilegesAdmin/DeleteUser/{id}
+ * DELETE /api/PrivilegesAdmin/User/{id}
  * Hard-deletes user. Must be blocked first.
  * Cannot delete users with uploaded documents or created opinions (Block only allowed).
  */
@@ -400,10 +400,14 @@ export async function deleteUser(id) {
     try {
         let res;
         try {
-            res = await request(`/api/Admin/Users/${id}`, { method: "DELETE" });
+            res = await request(`/api/PrivilegesAdmin/User/${id}`, { method: "DELETE" });
         } catch (err) {
             if (err?.status === 400 || err?.status === 403) throw err;
-            res = await request(`/api/PrivilegesAdmin/DeleteUser/${id}`, { method: "DELETE" });
+            try {
+                res = await request(`/api/Admin/Users/${id}`, { method: "DELETE" });
+            } catch {
+                throw err;
+            }
         }
         if (res !== undefined) return res;
     } catch (err) {
@@ -416,7 +420,7 @@ export async function deleteUser(id) {
         const isLawyer = target.role === "Lawyer" || target.role === "محامي";
         if (!isLawyer) {
             throw new ApiError(
-                "الحذف متاح فقط لحسابات المحامين العاديين، ولا يمكن حذف المستشارين أو المديرين أو مسؤولي النظام. يمكنك فقط حظر الحساب (Block).",
+                "الحذف متاح فقط لحسابات المحامين العاديين، ولا يمكن حذف المستشارين أو المديرين أو مسؤولي النظام. يمكنك فقط حظر الحساب.",
                 400
             );
         }
@@ -426,7 +430,7 @@ export async function deleteUser(id) {
             (target.opinionReviewsCount && target.opinionReviewsCount > 0)
         ) {
             throw new ApiError(
-                "لا يمكن حذف هذا المستخدم نظراً لوجود مستندات مرفوعة مسجلة باسمه في المنظومة. يمكنك فقط حظر الحساب (Block).",
+                "لا يمكن حذف هذا المستخدم نظراً لوجود مستندات مرفوعة مسجلة باسمه في المنظومة. يمكنك فقط حظر الحساب.",
                 400
             );
         }

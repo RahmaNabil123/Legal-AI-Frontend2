@@ -299,7 +299,7 @@ export default function ForgotPasswordPage() {
                                 <form onSubmit={handleResetPassword} className="mt-6 space-y-4">
                                     <Input
                                         id="reset-otp"
-                                        label={isAr ? "رمز التحقق (OTP)" : "Verification Code"}
+                                        label={isAr ? "رمز التحقق" : "Verification Code"}
                                         type="text"
                                         icon={KeyRound}
                                         placeholder="123456"

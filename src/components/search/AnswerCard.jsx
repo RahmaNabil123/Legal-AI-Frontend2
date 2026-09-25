@@ -351,7 +351,7 @@ export default function AnswerCard({
                                             <div className="rounded-2xl border border-blue-500/30 bg-blue-500/5 p-5 sm:p-6 space-y-2">
                                                 <div className="flex items-center gap-2 text-xs font-extrabold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
                                                     <HelpCircle className="h-4 w-4" />
-                                                    <span>{isAr ? "السؤال القانوني المدون بالمستند (Question)" : "Document Question"}</span>
+                                                    <span>{isAr ? "السؤال القانوني المدون بالمستند" : "Document Question"}</span>
                                                 </div>
                                                 <p className="text-base sm:text-lg font-bold text-slate-900 dark:text-white leading-relaxed">
                                                     {parsedQA.question}
@@ -362,7 +362,7 @@ export default function AnswerCard({
                                             <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] p-5 sm:p-6 space-y-3">
                                                 <div className="flex items-center gap-2 text-xs font-extrabold text-purple-600 dark:text-purple-400 uppercase tracking-wider">
                                                     <Scale className="h-4 w-4" />
-                                                    <span>{isAr ? "الرأي والحكم القانوني المعتمد (Answer)" : "Legal Ruling & Answer"}</span>
+                                                    <span>{isAr ? "الرأي والحكم القانوني المعتمد" : "Legal Ruling & Answer"}</span>
                                                 </div>
                                                 <div className="text-sm sm:text-base leading-relaxed text-slate-800 dark:text-slate-200 whitespace-pre-line font-normal">
                                                     {parsedQA.answer}

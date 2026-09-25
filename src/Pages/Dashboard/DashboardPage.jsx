@@ -216,27 +216,36 @@ export default function DashboardPage() {
         );
     };
 
+    const getRoleDisplay = (r) => {
+        if (!isAr) return r || "User";
+        if (r === "Legal Manager" || String(r).includes("Manager")) return "مدير قانوني";
+        if (r === "Legal Advisor" || String(r).includes("Advisor")) return "مستشار قانوني";
+        if (r === "System Administrator" || String(r).includes("Admin")) return "مسؤول النظام";
+        if (r === "Lawyer" || String(r).includes("Lawyer")) return "محامي";
+        return r || "مستخدم";
+    };
+
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-[#070A14] text-slate-900 dark:text-white transition-colors duration-200">
             <Navbar />
 
             <main className="mx-auto max-w-7xl px-6 py-10 lg:px-8 space-y-10">
                 {/* 1. Welcome Header Banner */}
-                <div className="relative overflow-hidden rounded-3xl border border-blue-500/20 bg-gradient-to-r from-blue-900/40 via-[#0B1120] to-purple-900/30 p-8 sm:p-10 shadow-2xl backdrop-blur-xl">
+                <div className="relative overflow-hidden rounded-3xl border border-blue-200/80 dark:border-blue-500/20 bg-gradient-to-r from-blue-50/90 via-indigo-50/60 to-purple-50/60 dark:from-blue-900/40 dark:via-[#0B1120] dark:to-purple-900/30 p-8 sm:p-10 shadow-lg dark:shadow-2xl backdrop-blur-xl transition-colors duration-300">
                     <div className="relative z-10 flex flex-wrap items-center justify-between gap-6">
                         <div>
                             <div className="flex items-center gap-2 mb-3">
-                                <span className="rounded-full bg-blue-500/20 px-3.5 py-1 text-xs font-extrabold text-blue-400 border border-blue-500/30">
-                                    {role}
+                                <span className="rounded-full bg-blue-100 dark:bg-blue-500/20 px-3.5 py-1 text-xs font-extrabold text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-500/30">
+                                    {getRoleDisplay(role)}
                                 </span>
-                                <span className="text-xs text-slate-400 font-semibold">
+                                <span className="text-xs text-slate-600 dark:text-slate-400 font-semibold">
                                     {isAr ? "القطاع القانوني وإدارة المخاطر" : "Banking Legal Intelligence"}
                                 </span>
                             </div>
-                            <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-white">
+                            <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-slate-950 dark:text-white">
                                 {isAr ? `أهلاً بك، ${userName}` : `Welcome back, ${userName}`}
                             </h1>
-                            <p className="mt-2 text-sm text-slate-300 max-w-2xl leading-relaxed">
+                            <p className="mt-2 text-sm text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
                                 {isAr
                                     ? (isAdmin
                                         ? "لوحة العمل المخصصة لدورك الوظيفي. يمكنك إدارة مستخدمي المنظومة ومتابعة الصلاحيات وسجلات النظام."
@@ -251,7 +260,7 @@ export default function DashboardPage() {
                                 <button
                                     type="button"
                                     onClick={() => navigate("/search")}
-                                    className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 hover:bg-blue-500 px-5 py-3 text-xs font-bold text-white shadow-lg shadow-blue-600/30 transition-all hover:scale-105 active:scale-95"
+                                    className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 px-5 py-3 text-xs font-bold text-white shadow-md shadow-blue-600/25 transition-all hover:scale-105 active:scale-95"
                                 >
                                     <Search className="h-4 w-4" />
                                     <span>{isAr ? "محرك البحث الذكي" : "Semantic Search"}</span>
@@ -262,7 +271,7 @@ export default function DashboardPage() {
                                 <button
                                     type="button"
                                     onClick={() => navigate("/legal-opinion")}
-                                    className="inline-flex items-center gap-2 rounded-2xl border border-purple-500/30 bg-purple-500/20 hover:bg-purple-500/30 px-5 py-3 text-xs font-bold text-purple-300 transition-all hover:scale-105 active:scale-95"
+                                    className="inline-flex items-center gap-2 rounded-2xl border border-purple-300 dark:border-purple-500/30 bg-purple-100/90 hover:bg-purple-200/90 text-purple-950 dark:bg-purple-500/20 dark:hover:bg-purple-500/30 dark:text-purple-300 px-5 py-3 text-xs font-bold transition-all hover:scale-105 active:scale-95"
                                 >
                                     <FilePlus className="h-4 w-4" />
                                     <span>{isAr ? "صياغة ورفع فتوى جديدة" : "Draft / Upload Opinion"}</span>
@@ -273,7 +282,7 @@ export default function DashboardPage() {
                                 <button
                                     type="button"
                                     onClick={() => navigate("/review-queue")}
-                                    className="inline-flex items-center gap-2 rounded-2xl border border-emerald-500/30 bg-emerald-500/20 hover:bg-emerald-500/30 px-5 py-3 text-xs font-bold text-emerald-300 transition-all hover:scale-105 active:scale-95"
+                                    className="inline-flex items-center gap-2 rounded-2xl border border-emerald-300 dark:border-emerald-500/30 bg-emerald-100/90 hover:bg-emerald-200/90 text-emerald-950 dark:bg-emerald-500/20 dark:hover:bg-emerald-500/30 dark:text-emerald-300 px-5 py-3 text-xs font-bold transition-all hover:scale-105 active:scale-95"
                                 >
                                     <CheckCircle2 className="h-4 w-4" />
                                     <span>{isAr ? "قائمة المراجعة" : "Review Queue"}</span>
@@ -284,7 +293,7 @@ export default function DashboardPage() {
                                 <button
                                     type="button"
                                     onClick={() => navigate("/users")}
-                                    className="inline-flex items-center gap-2 rounded-2xl border border-amber-500/30 bg-amber-500/20 hover:bg-amber-500/30 px-5 py-3 text-xs font-bold text-amber-300 transition-all hover:scale-105 active:scale-95"
+                                    className="inline-flex items-center gap-2 rounded-2xl border border-amber-300 dark:border-amber-500/30 bg-amber-100/90 hover:bg-amber-200/90 text-amber-950 dark:bg-amber-500/20 dark:hover:bg-amber-500/30 dark:text-amber-300 px-5 py-3 text-xs font-bold transition-all hover:scale-105 active:scale-95"
                                 >
                                     <Users className="h-4 w-4" />
                                     <span>{isAr ? "إدارة المستخدمين" : "User Management"}</span>
@@ -303,7 +312,7 @@ export default function DashboardPage() {
                                 <Sparkles className="h-5 w-5 text-blue-500" />
                                 <h2 className="text-base font-bold text-slate-900 dark:text-white">
                                     {isAr
-                                        ? "البحث الدلالي السريع في السوابق القضائية (Semantic Search Shortcut)"
+                                        ? "البحث الدلالي السريع في السوابق القضائية"
                                         : "Semantic Precedent Search Shortcut"}
                                 </h2>
                             </div>
@@ -415,7 +424,7 @@ export default function DashboardPage() {
                             <div>
                                 <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                                     <BookOpen className="h-5 w-5 text-purple-500" />
-                                    <span>{isAr ? "متابعة آرائي القانونية وحالتها (My Opinions Status Widget)" : "My Draft & Submitted Opinions"}</span>
+                                    <span>{isAr ? "متابعة آرائي القانونية وحالتها" : "My Draft & Submitted Opinions"}</span>
                                 </h2>
                                 <p className="text-xs text-slate-400 mt-1">
                                     {isAr ? "حالة الفتاوى التي قمت بصياغتها وقرارات الاعتماد الصادرة عليها" : "Track status of your authored opinions"}
@@ -485,10 +494,10 @@ export default function DashboardPage() {
                             <div>
                                 <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                                     <ShieldCheck className="h-5 w-5 text-emerald-500" />
-                                    <span>{isAr ? "فحص واعتماد الفتاوى (Opinions Awaiting Manager Review)" : "Opinions Awaiting Manager Review"}</span>
+                                    <span>{isAr ? "فحص واعتماد الفتاوى" : "Opinions Awaiting Manager Review"}</span>
                                 </h2>
                                 <p className="text-xs text-slate-400 mt-1">
-                                    {isAr ? "الفتاوى القانونية المصاغة من المستشارين وتنتظر موافقتك للاعتماد في الـ AI" : "Advisor opinions pending approval"}
+                                    {isAr ? "الفتاوى القانونية المصاغة من المستشارين وتنتظر موافقتك للاعتماد في منظومة البحث الذكي" : "Advisor opinions pending approval"}
                                 </p>
                             </div>
 
@@ -498,12 +507,12 @@ export default function DashboardPage() {
                                 className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 hover:bg-emerald-500 px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-emerald-600/30 transition-all hover:scale-105 active:scale-95"
                             >
                                 <CheckCircle2 className="h-4 w-4" />
-                                <span>{isAr ? "فتح قائمة المراجعة (Review Queue)" : "Open Review Queue"}</span>
+                                <span>{isAr ? "فتح قائمة المراجعة" : "Open Review Queue"}</span>
                             </button>
                         </div>
 
                         {/* Highlight Count Widget */}
-                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-5">
                                 <div className="flex items-center justify-between">
                                     <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
@@ -528,25 +537,13 @@ export default function DashboardPage() {
 
                             <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-5">
                                 <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
-                                    {isAr ? "فتاوى معتمدة في الـ AI" : "Approved & Indexed in AI"}
+                                    {isAr ? "فتاوى معتمدة في الذكاء الاصطناعي" : "Approved & Indexed in AI"}
                                 </span>
                                 <p className="mt-3 text-3xl font-extrabold text-slate-900 dark:text-white">
                                     {approvedOpinionsCount}
                                 </p>
                                 <p className="text-[11px] text-emerald-500 font-bold mt-1">
                                     {isAr ? "فتاوى معتمدة ومفهرسة" : "Active Approved Opinions"}
-                                </p>
-                            </div>
-
-                            <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-5">
-                                <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
-                                    {isAr ? "إجمالي آراء هذا الشهر" : "Total Submissions This Month"}
-                                </span>
-                                <p className="mt-3 text-3xl font-extrabold text-slate-900 dark:text-white">
-                                    {monthOpinionsCount}
-                                </p>
-                                <p className="text-[11px] text-slate-400 mt-1">
-                                    {isAr ? "من كافة المستشارين (يتجدد شهرياً)" : "Submitted this month (monthly)"}
                                 </p>
                             </div>
                         </div>
@@ -602,7 +599,7 @@ export default function DashboardPage() {
                             <div>
                                 <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                                     <Shield className="h-5 w-5 text-amber-500" />
-                                    <span>{isAr ? "إحصائيات المنظومة والرقابة (System Governance Widget)" : "System Administrator Overview"}</span>
+                                    <span>{isAr ? "إحصائيات المنظومة والرقابة" : "System Administrator Overview"}</span>
                                 </h2>
                                 <p className="text-xs text-slate-400 mt-1">
                                     {isAr ? "التحكم في حسابات المستشارين والمحامين وتدقيق نشاطات النظام" : "Total user counts and administrative governance"}
