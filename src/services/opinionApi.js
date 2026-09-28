@@ -475,7 +475,28 @@ export async function resubmitOpinion(id, updatedFields) {
         Title: titleVal,
         Question: questionVal,
         Answer: answerVal,
+        title: titleVal,
+        question: questionVal,
+        answer: answerVal,
     };
+
+    // Update in-memory state so any views or managers see the new edits immediately
+    const index = mockOpinions.findIndex((op) => String(op.id) === String(id));
+    if (index !== -1) {
+        mockOpinions[index] = {
+            ...mockOpinions[index],
+            title: titleVal,
+            question: questionVal,
+            answer: answerVal,
+            Title: titleVal,
+            Question: questionVal,
+            Answer: answerVal,
+            status: "Pending",
+            statusCode: 1,
+            rejectionReason: null,
+            updatedAt: new Date().toISOString(),
+        };
+    }
 
     try {
         const res = await request(`/api/LegalOpinion/${id}/Resubmit`, {
@@ -484,44 +505,32 @@ export async function resubmitOpinion(id, updatedFields) {
         });
 
         if (res && typeof res === "object" && res.id) {
-            const normalizedStatus = normalizeOpinionStatusName(res.status);
+            const normalizedStatus = normalizeOpinionStatusName(res.status) || "Pending";
             return {
                 ...res,
+                title: res.title || titleVal,
+                question: res.question || questionVal,
+                answer: res.answer || answerVal,
                 status: normalizedStatus,
                 statusCode: typeof res.status === "number" ? res.status : (res.statusCode || 1),
+                rejectionReason: null,
+                success: true,
             };
         }
 
-        // If backend returned rows affected or minimal response, fetch fresh data
-        try {
-            const fresh = await getOpinionById(id);
-            if (fresh && typeof fresh === "object" && fresh.id) {
-                return fresh;
-            }
-        } catch {
-            // Fallback optimistic
-        }
-
         return {
+            ...(index !== -1 ? mockOpinions[index] : {}),
             id,
             title: titleVal,
             question: questionVal,
             answer: answerVal,
             status: "Pending",
             statusCode: 1,
+            rejectionReason: null,
             success: true,
         };
     } catch (err) {
-        const index = mockOpinions.findIndex((op) => String(op.id) === String(id));
         if (index !== -1 && !err?.status) {
-            mockOpinions[index] = {
-                ...mockOpinions[index],
-                title: titleVal,
-                question: questionVal,
-                answer: answerVal,
-                status: "Pending",
-                statusCode: 1,
-            };
             return { ...mockOpinions[index] };
         }
         throw err;

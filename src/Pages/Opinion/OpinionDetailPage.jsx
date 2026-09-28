@@ -182,9 +182,20 @@ export default function OpinionDetailPage() {
                 answer: editAnswer.trim(),
             });
             if (updated && typeof updated === "object") {
-                setOpinion((prev) => ({ ...prev, ...updated }));
+                setOpinion((prev) => ({
+                    ...prev,
+                    ...updated,
+                    title: editTitle.trim(),
+                    question: editQuestion.trim(),
+                    answer: editAnswer.trim(),
+                    status: "Pending",
+                    statusCode: 1,
+                    rejectionReason: null,
+                }));
+                setEditTitle(editTitle.trim());
+                setEditQuestion(editQuestion.trim());
+                setEditAnswer(editAnswer.trim());
             }
-            fetchOpinionData();
             setIsEditing(false);
             setActionSuccess(isAr ? "تم إرسال التعديل بنجاح وإعادة الفتوى لقيد المراجعة." : "Opinion resubmitted for review successfully.");
         } catch (err) {

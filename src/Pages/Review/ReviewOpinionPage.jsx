@@ -103,9 +103,17 @@ export default function ReviewOpinionPage() {
                 setActionSuccess(isAr ? "تم إرسال طلب التعديل للمستشار القانوني بنجاح." : "Revision requested successfully.");
             }
 
-            if (updated && typeof updated === "object") {
-                setOpinion((prev) => ({ ...prev, ...updated }));
-            }
+            const statusName =
+                modalDecision === 1 ? "Approved" : modalDecision === 2 ? "Rejected" : "RevisionRequired";
+            const statusCode = modalDecision === 1 ? 2 : modalDecision === 2 ? 3 : 4;
+
+            setOpinion((prev) => ({
+                ...prev,
+                ...(updated && typeof updated === "object" ? updated : {}),
+                status: statusName,
+                statusCode,
+                rejectionReason: modalDecision !== 1 ? modalComment.trim() : null,
+            }));
             setModalDecision(null);
             setModalComment("");
         } catch (err) {

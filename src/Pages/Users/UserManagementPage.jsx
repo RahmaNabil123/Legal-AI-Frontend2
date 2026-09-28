@@ -245,9 +245,17 @@ export default function UserManagementPage() {
                                         const q = searchQuery.trim().toLowerCase();
                                         const filtered = allUsers.filter((u) => {
                                             const fullName = `${u.firstName || ""} ${u.lastName || ""}`.toLowerCase();
+                                            const revName = `${u.lastName || ""} ${u.firstName || ""}`.toLowerCase();
                                             const phone = (u.phoneNumber || "").toLowerCase();
                                             const username = (u.userName || "").toLowerCase();
-                                            return fullName.includes(q) || phone.includes(q) || username.includes(q);
+                                            const email = (u.email || "").toLowerCase();
+                                            return (
+                                                fullName.includes(q) ||
+                                                revName.includes(q) ||
+                                                phone.includes(q) ||
+                                                username.includes(q) ||
+                                                email.includes(q)
+                                            );
                                         }).slice(0, 6);
 
                                         if (filtered.length === 0) {
@@ -261,17 +269,16 @@ export default function UserManagementPage() {
                                         return (
                                             <div className="space-y-1">
                                                 <p className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                                                    {isAr ? "اقتراحات المستخدمين (اضغط للتطبيق)" : "Suggestions (Click to select)"}
+                                                    {isAr ? "اقتراحات المستخدمين (اضغط لفتح الملف، أو تصفية للجدول)" : "Suggestions (Click to open, or filter table)"}
                                                 </p>
                                                 {filtered.map((s) => (
-                                                    <button
+                                                    <div
                                                         key={s.id}
-                                                        type="button"
                                                         onClick={() => {
-                                                            setSearchQuery(`${s.firstName} ${s.lastName}`);
+                                                            navigate(`/users/${s.id}`);
                                                             setShowSuggestions(false);
                                                         }}
-                                                        className="w-full flex items-center justify-between p-2 rounded-xl text-start hover:bg-slate-100 dark:hover:bg-white/5 transition-colors group"
+                                                        className="w-full flex items-center justify-between p-2 rounded-xl text-start hover:bg-slate-100 dark:hover:bg-white/5 transition-colors group cursor-pointer"
                                                     >
                                                         <div className="flex items-center gap-2.5">
                                                             {s.profilePicture && s.profilePicture !== "No Profile Picture" ? (
@@ -294,10 +301,24 @@ export default function UserManagementPage() {
                                                                 </p>
                                                             </div>
                                                         </div>
-                                                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-white/5 text-slate-400">
-                                                            {s.role}
-                                                        </span>
-                                                    </button>
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-white/5 text-slate-400">
+                                                                {s.role}
+                                                            </span>
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setSearchQuery(`${s.firstName} ${s.lastName}`);
+                                                                    setShowSuggestions(false);
+                                                                }}
+                                                                className="text-[10px] font-bold text-blue-500 hover:text-blue-600 px-2 py-1 rounded-lg hover:bg-blue-500/10 transition-colors border border-blue-500/20"
+                                                                title={isAr ? "تصفية الجدول بهذا الاسم" : "Filter table"}
+                                                            >
+                                                                {isAr ? "تصفية" : "Filter"}
+                                                            </button>
+                                                        </div>
+                                                    </div>
                                                 ))}
                                             </div>
                                         );

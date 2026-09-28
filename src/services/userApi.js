@@ -160,48 +160,80 @@ let mockUsers = [
     },
 ];
 
+const usersCache = new Map();
+
+// Seed initial cache from mock users
+mockUsers.forEach((u) => {
+    if (u && u.id) usersCache.set(String(u.id), u);
+});
+
 /**
  * GET /api/PrivilegesAdmin/Users
  * Or GET /api/PrivilegesAdmin/Users/{roleId}
- * Or GET /api/PrivilegesAdmin/Users/Search?name=...
  */
 export async function getUsers(filters = {}) {
+    let list = [];
+    let backendSuccess = false;
+
     try {
         let endpoint = "/api/PrivilegesAdmin/Users";
-
-        if (filters.search) {
-            // Check if search is a phone number or name
-            const isPhone = /^\d+$/.test(filters.search.trim());
-            const param = isPhone ? `phoneNumber=${encodeURIComponent(filters.search.trim())}` : `name=${encodeURIComponent(filters.search.trim())}`;
-            endpoint = `/api/PrivilegesAdmin/Users/Search?${param}`;
-        } else if (filters.role && filters.role !== "ALL") {
+        if (filters.role && filters.role !== "ALL") {
             const roleNum = mapRoleToEnumNumber(filters.role);
             endpoint = `/api/PrivilegesAdmin/Users/${roleNum}`;
         }
 
         const data = await request(endpoint, { method: "GET" });
-        if (Array.isArray(data)) return data;
+        if (Array.isArray(data)) {
+            list = data;
+            backendSuccess = true;
+            data.forEach((u) => {
+                if (u && u.id) usersCache.set(String(u.id), u);
+            });
+        }
     } catch {
-        // Fallback to local filtering
+        // Backend offline or error -> fallback to mock data
     }
 
-    await wait(MOCK_DELAY_MS);
+    if (!backendSuccess) {
+        await wait(MOCK_DELAY_MS);
+        list = [...mockUsers];
+        mockUsers.forEach((u) => {
+            if (u && u.id) usersCache.set(String(u.id), u);
+        });
+    }
 
-    let list = [...mockUsers];
+    // Apply search filter consistently across both backend and mock data
     if (filters.search) {
-        const q = filters.search.toLowerCase();
+        const q = filters.search.trim().toLowerCase();
+        list = list.filter((u) => {
+            const fullName = `${u.firstName || ""} ${u.lastName || ""}`.trim().toLowerCase();
+            const revFullName = `${u.lastName || ""} ${u.firstName || ""}`.trim().toLowerCase();
+            const first = (u.firstName || "").toLowerCase();
+            const last = (u.lastName || "").toLowerCase();
+            const email = (u.email || "").toLowerCase();
+            const username = (u.userName || "").toLowerCase();
+            const phone = (u.phoneNumber || "").toLowerCase();
+
+            return (
+                fullName.includes(q) ||
+                revFullName.includes(q) ||
+                first.includes(q) ||
+                last.includes(q) ||
+                email.includes(q) ||
+                username.includes(q) ||
+                phone.includes(q)
+            );
+        });
+    }
+
+    if (filters.role && filters.role !== "ALL") {
         list = list.filter(
             (u) =>
-                u.firstName.toLowerCase().includes(q) ||
-                u.lastName.toLowerCase().includes(q) ||
-                u.email.toLowerCase().includes(q) ||
-                u.userName.toLowerCase().includes(q) ||
-                (u.phoneNumber && u.phoneNumber.includes(q))
+                u.role === filters.role ||
+                mapRoleToEnumNumber(u.role) === mapRoleToEnumNumber(filters.role)
         );
     }
-    if (filters.role && filters.role !== "ALL") {
-        list = list.filter((u) => u.role === filters.role);
-    }
+
     if (filters.status && filters.status !== "ALL") {
         const isActive = filters.status === "ACTIVE";
         list = list.filter((u) => u.isActive === isActive);
@@ -211,7 +243,7 @@ export async function getUsers(filters = {}) {
 }
 
 /**
- * GET /api/Admin/Users/{id}/activities or /api/PrivilegesAdmin/User/{id}
+ * GET /api/PrivilegesAdmin/Users/{id}
  * Returns UserActivityResultDTO:
  * {
  *   profile: UserProfileResultDTO,
@@ -222,39 +254,81 @@ export async function getUsers(filters = {}) {
  * }
  */
 export async function getUserById(id) {
+    if (!id) throw new ApiError("معرف المستخدم غير محدد.", 400);
+    const stringId = String(id).trim();
+
     try {
         let data = null;
+        // Priority 1: Section 10.12 official route: /api/PrivilegesAdmin/Users/{id}
         try {
-            data = await request(`/api/PrivilegesAdmin/User/${id}`, { method: "GET" });
+            data = await request(`/api/PrivilegesAdmin/Users/${stringId}`, { method: "GET" });
         } catch {
-            data = await request(`/api/Admin/Users/${id}/activities`, { method: "GET" });
+            // Priority 2: Singular fallback: /api/PrivilegesAdmin/User/{id}
+            try {
+                data = await request(`/api/PrivilegesAdmin/User/${stringId}`, { method: "GET" });
+            } catch {
+                // Priority 3: Alternative admin activities route
+                data = await request(`/api/Admin/Users/${stringId}/activities`, { method: "GET" });
+            }
         }
 
         if (data) {
             const profile = data.profile || data;
-            return {
+            const normalized = {
                 ...profile,
                 profile,
-                id: String(profile.id || id),
+                id: String(profile.id || stringId),
                 uploadedDocuments: data.uploadedDocuments || profile.uploadedDocuments || [],
                 createdOpinions: data.createdOpinions || profile.createdOpinions || [],
                 reviewedOpinions: data.reviewedOpinions || profile.reviewedOpinions || [],
                 opinionReviewsCount: data.opinionReviewsCount ?? profile.opinionReviewsCount ?? (data.reviewedOpinions?.length || 0),
             };
+            usersCache.set(String(normalized.id), normalized);
+            return normalized;
         }
-    } catch (err) {
-        if (err?.status && err?.status !== 404) {
-            throw err;
-        }
+    } catch {
+        // Fallback to cache / mock
     }
 
     await wait(MOCK_DELAY_MS);
-    const user = mockUsers.find((u) => String(u.id) === String(id));
-    if (!user) throw new ApiError("المستخدم غير موجود.", 404);
-    return {
+
+    // 1. Check in runtime cache
+    if (usersCache.has(stringId)) {
+        const cached = usersCache.get(stringId);
+        return {
+            ...cached,
+            profile: cached,
+            id: String(cached.id || stringId),
+            uploadedDocuments: cached.uploadedDocuments || [],
+            createdOpinions: cached.createdOpinions || [],
+            reviewedOpinions: cached.reviewedOpinions || [],
+            opinionReviewsCount: cached.opinionReviewsCount ?? (cached.reviewedOpinions?.length || 0),
+        };
+    }
+
+    // 2. Check in mockUsers by id, userName, or email
+    const user = mockUsers.find(
+        (u) =>
+            String(u.id) === stringId ||
+            (u.userName && String(u.userName).toLowerCase() === stringId.toLowerCase()) ||
+            (u.email && String(u.email).toLowerCase() === stringId.toLowerCase())
+    );
+
+    if (!user) {
+        throw new ApiError("المستخدم غير موجود.", 404);
+    }
+
+    const fallbackUser = {
         ...user,
         profile: user,
+        id: String(user.id),
+        uploadedDocuments: user.uploadedDocuments || [],
+        createdOpinions: user.createdOpinions || [],
+        reviewedOpinions: user.reviewedOpinions || [],
+        opinionReviewsCount: user.opinionReviewsCount ?? (user.reviewedOpinions?.length || 0),
     };
+    usersCache.set(String(fallbackUser.id), fallbackUser);
+    return fallbackUser;
 }
 
 /**
