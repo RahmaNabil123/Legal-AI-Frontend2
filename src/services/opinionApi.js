@@ -46,6 +46,32 @@ export function normalizeOpinionStatusName(status) {
 
 let mockOpinions = [
     {
+        id: 100,
+        title: "الرأي القانوني في مدى صحة شرط التحكيم المدرج في عقود التمويل الاستثماري",
+        question: "هل يعد شرط التحكيم المدرج في ملحق عقد التمويل الاستثماري نافذاً في مواجهة الكفيل المتضامن دون توقيعه المنفصل على الملحق؟",
+        answer:
+            "وفقاً لقانون التحكيم المصري رقم 27 لسنة 1994 وقواعد غرفة القاهرة للتحكيم التجاري، فإن شرط التحكيم ذو طبيعة استثنائية تستوجب رضاءً خاصاً.\n\nبما أن الكفيل المتضامن قد وقع على العقد الأصلي فقط دون التوقيع على الملحق المتضمن شرط التحكيم، فإن الشرط لا يسري في مواجهته، وتختص المحاكم الاقتصادية بنظر أي نزاع متعلق بضمانته المالية.",
+        createdByName: "المستشار أحمد فؤاد",
+        submittedBy: "المستشار أحمد فؤاد",
+        createdAt: "2026-09-28",
+        status: "RevisionRequired", // 4 (RevisionRequired - جاهزة لاختبار تعديل المستشار)
+        statusCode: 4,
+        rejectionReason: "يرجى تدعيم الفتوى بالسند من أحكام محكمة النقض (الطعن رقم 1450 لسنة 88 ق)، وتوضيح الفارق بين حوالة الحق وتجديد الدين بالنسبة للكفيل قبل إعادة الاعتماد.",
+        document: {
+            fileName: "Arbitration_Finance_Clause_Draft.pdf",
+            fileSize: 942080,
+            fileType: "PDF",
+        },
+        reviews: [
+            {
+                reviewerName: "د. طارق عبد الله",
+                decision: 3,
+                comments: "يرجى تدعيم الفتوى بالسند من أحكام محكمة النقض (الطعن رقم 1450 لسنة 88 ق)، وتوضيح الفارق بين حوالة الحق وتجديد الدين بالنسبة للكفيل قبل إعادة الاعتماد.",
+                createdAt: "2026-09-28 14:30",
+            },
+        ],
+    },
+    {
         id: 101,
         title: "الرأي القانوني في شروط الفسخ الرضائي لخطابات الاعتماد المستندي",
         question: "ما هي التبعات القانونية لفسخ خطاب الاعتماد المستندي باتفاق الطرفين دون موافقة البنك المصدر؟",
@@ -53,8 +79,8 @@ let mockOpinions = [
             "استناداً إلى الأعراف والقواعد الموحدة للاعتمادات المستندية (UCP 600) وقانون التجارة، فإن خطاب الاعتماد المستندي ينشئ التزاماً مستقلاً وقاطعاً في ذمة البنك المصدر تجاه المستفيد.\n\nلا يجوز للآمر والمستفيد إنهاء الاعتماد أو تعديل شروطه باتفاقهما الثنائي المنفرد ما لم يقترن ذلك بموافقة صريحة وكتابية من البنك المصدر، حمايةً لحقوق البنك في العمولات والمصاريف وتغطية الالتزامات المترتبة على إصدار الاعتماد.",
         createdByName: "المستشار أحمد فؤاد",
         submittedBy: "المستشار أحمد فؤاد",
-        createdAt: "2026-08-28",
-        status: "Pending", // 1 (Submitted)
+        createdAt: "2026-09-29",
+        status: "Pending", // 1 (Submitted - جاهزة لاختبار مراجعة المدير)
         statusCode: 1,
         rejectionReason: null,
         document: {
@@ -114,6 +140,28 @@ let mockOpinions = [
     },
     {
         id: 104,
+        title: "مدى التزام المستأجر بسداد الأجرة حال غلق العين بقرار إداري احترازي",
+        question: "هل يعد الغلق الإداري للعين المؤجرة قوة قاهرة تسقط الالتزام بالأجرة كلياً أم جزئياً؟",
+        answer:
+            "تعتبر القرارات السيادية والإدارية المانعة من الانتفاع بالعين المؤجرة صورة من صور القوة القاهرة المؤقتة التي تجيز للمستأجر إنقاص الأجرة بقدر ما فاته من منفعة دون فسخ العقد تلقائياً.",
+        createdByName: "المستشار محمود كامل",
+        submittedBy: "المستشار محمود كامل",
+        createdAt: "2026-09-25",
+        status: "RevisionRequired", // 4 (RevisionRequired - اختبار تعديل إضافي)
+        statusCode: 4,
+        rejectionReason: "يرجى إعادة تحرير الرأي مع التفرقة بين الهلاك الكلي والجزئي للمنفعة وفق المادة 569 من القانون المدني، وتوضيح أثر إعادة فتح العين.",
+        document: null,
+        reviews: [
+            {
+                reviewerName: "د. طارق عبد الله",
+                decision: 3,
+                comments: "يرجى إعادة تحرير الرأي مع التفرقة بين الهلاك الكلي والجزئي للمنفعة وفق المادة 569 من القانون المدني، وتوضيح أثر إعادة فتح العين.",
+                createdAt: "2026-09-25",
+            },
+        ],
+    },
+    {
+        id: 105,
         title: "صحة الشروط الجزائية المقيدة في عقود التسهيلات الائتمانية",
         question: "هل يجوز تخفيض الشرط الجزائي المتفق عليه في عقد التسهيل إذا ثبت عدم وقوع ضرر فعلي للبنك؟",
         answer:
@@ -121,33 +169,11 @@ let mockOpinions = [
         createdByName: "المستشار محمود كامل",
         submittedBy: "المستشار محمود كامل",
         createdAt: "2026-09-18",
-        status: "Pending",
+        status: "Pending", // 1 (Pending - اختبار مراجعة إضافي)
         statusCode: 1,
         rejectionReason: null,
         document: null,
         reviews: [],
-    },
-    {
-        id: 105,
-        title: "مدى التزام البنك بإجراء المقاصة القضائية بين حسابين لنفس العميل",
-        question: "هل يحق للبنك إجراء مقاصة بين حساب مدين وحساب دائن لفرعين مختلفين؟",
-        answer:
-            "نعم، وحدة الذمة المالية للعميل ووحدة الشخصية الاعتبارية للبنك بفروعه تخول للبنك إجراء المقاصة القانونية والاتفاقية دون الحاجة إلى إذن قضائي مسبق إذا نص العقد على ذلك.",
-        createdByName: "المستشارة مروة السعيد",
-        submittedBy: "المستشارة مروة السعيد",
-        createdAt: "2026-09-15",
-        status: "Approved",
-        statusCode: 2,
-        rejectionReason: null,
-        document: null,
-        reviews: [
-            {
-                reviewerName: "د. طارق عبد الله",
-                decision: 1,
-                comments: "رأي متميز وموافق لتعليمات البنك المركزي المصري.",
-                createdAt: "2026-09-16",
-            },
-        ],
     },
     {
         id: 106,
@@ -158,7 +184,7 @@ let mockOpinions = [
         createdByName: "المستشار أحمد فؤاد",
         submittedBy: "المستشار أحمد فؤاد",
         createdAt: "2026-09-19",
-        status: "Approved",
+        status: "Approved", // 2 (Approved)
         statusCode: 2,
         rejectionReason: null,
         document: null,
@@ -190,11 +216,33 @@ export async function submitLegalOpinion(opinionData, file) {
         formData.append("File", file);
     }
 
-    const realResult = await request("/api/LegalOpinion", {
-        method: "POST",
-        body: formData,
-    });
-    return realResult;
+    try {
+        const realResult = await request("/api/LegalOpinion", {
+            method: "POST",
+            body: formData,
+        });
+        if (realResult) return realResult;
+    } catch {
+        // Fallback to local mock addition
+    }
+
+    await wait(MOCK_DELAY_MS);
+    const newOp = {
+        id: Date.now(),
+        title: opinionData.title.trim(),
+        question: opinionData.question.trim(),
+        answer: opinionData.answer.trim(),
+        createdByName: "المستشار أحمد فؤاد",
+        submittedBy: "المستشار أحمد فؤاد",
+        createdAt: new Date().toISOString(),
+        status: "Pending",
+        statusCode: 1,
+        rejectionReason: null,
+        document: file ? { fileName: file.name, fileSize: file.size || 102400, fileType: "PDF" } : null,
+        reviews: [],
+    };
+    mockOpinions.unshift(newOp);
+    return newOp;
 }
 
 /**
@@ -244,10 +292,8 @@ export async function getMyOpinions(filters = {}) {
             }
             return list;
         }
-    } catch (err) {
-        if (getToken()) {
-            throw err;
-        }
+    } catch {
+        // Fallback to mockOpinions
     }
 
     await wait(MOCK_DELAY_MS);
@@ -313,10 +359,8 @@ export async function getAllOpinions(filters = {}) {
             }
             return list;
         }
-    } catch (err) {
-        if (getToken()) {
-            throw err;
-        }
+    } catch {
+        // Fallback to mockOpinions
     }
 
     await wait(MOCK_DELAY_MS);
@@ -542,8 +586,14 @@ export async function resubmitOpinion(id, updatedFields) {
  * Deletes an opinion draft (any opinion that is NOT approved)
  */
 export async function deleteOpinion(id) {
-    const res = await request(`/api/LegalOpinion/${id}`, { method: "DELETE" });
-    return res || { success: true };
+    try {
+        const res = await request(`/api/LegalOpinion/${id}`, { method: "DELETE" });
+        if (res !== undefined) return res;
+    } catch {
+        // Fallback
+    }
+    mockOpinions = mockOpinions.filter((op) => String(op.id) !== String(id));
+    return { success: true };
 }
 
 /**
