@@ -103,10 +103,11 @@ export default function ReviewOpinionPage() {
                 setActionSuccess(isAr ? "تم إرسال طلب التعديل للمستشار القانوني بنجاح." : "Revision requested successfully.");
             }
 
-            if (updated) {
-                setOpinion(updated);
+            if (updated && typeof updated === "object") {
+                setOpinion((prev) => ({ ...prev, ...updated }));
             }
             setModalDecision(null);
+            setModalComment("");
         } catch (err) {
             setActionError(getErrorMessage(err));
         } finally {

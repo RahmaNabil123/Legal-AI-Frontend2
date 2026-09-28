@@ -125,7 +125,14 @@ export default function App() {
               {/* Aliases for backwards compatibility */}
               <Route path="/my-opinions" element={<Navigate to="/opinions" replace />} />
               <Route path="/review-queue" element={<Navigate to="/opinions" replace />} />
-              <Route path="/review-opinion/:id" element={<Navigate to="/opinions/:id" replace />} />
+              <Route
+                path="/review-opinion/:id"
+                element={
+                  <ProtectedRoute allowedRoles={["Legal Advisor", "Legal Manager", "System Administrator"]}>
+                    <OpinionDetailPage />
+                  </ProtectedRoute>
+                }
+              />
 
               {/* User Governance & Privileges (Manager & Admin) */}
               <Route

@@ -34,23 +34,44 @@ export class ApiError extends Error {
  */
 export function getErrorMessage(error) {
     if (!(error instanceof ApiError)) {
-        return "Something went wrong. Please try again.";
+        return error?.message || "Something went wrong. Please try again.";
     }
 
     if (error.status === null) {
         return error.message || "Network error. Please check your connection.";
     }
 
-    // Prefer the backend's message over the generic ApiError fallback.
-    const errorMessage = error.data?.errorMessage || error.data?.ErrorMessage;
+    // Extract validation errors if present
     const errorsField = error.data?.errors || error.data?.Errors;
-    let errorsText;
+    let errorsText = "";
+
     if (Array.isArray(errorsField)) {
-        errorsText = errorsField.join(" ");
+        errorsText = errorsField
+            .map((item) => {
+                if (typeof item === "string") return item;
+                if (item && Array.isArray(item.errors)) return item.errors.join(", ");
+                if (item && typeof item === "object") {
+                    return item.errorMessage || item.message || item.description || "";
+                }
+                return String(item || "");
+            })
+            .filter(Boolean)
+            .join(" | ");
     } else if (errorsField && typeof errorsField === "object") {
-        errorsText = Object.values(errorsField).flat().join(" ");
+        errorsText = Object.values(errorsField)
+            .flat()
+            .filter(Boolean)
+            .join(" | ");
     }
 
+    // Prefer specific validation errors when errorMessage is generic "Validation Failed"
+    const errorMessage = error.data?.errorMessage || error.data?.ErrorMessage;
+    if (errorMessage && errorMessage !== "Validation Failed") {
+        return errorsText ? `${errorMessage}: ${errorsText}` : errorMessage;
+    }
+    if (errorsText) {
+        return errorsText;
+    }
     if (errorMessage) {
         return errorMessage;
     }
@@ -65,8 +86,13 @@ export function getErrorMessage(error) {
 
     // Best-effort guesses for endpoints without a confirmed shape yet.
     const guessedMessage =
-        error.data?.message || error.data?.Message || error.data?.error || error.data?.Error || error.data?.detail || error.data?.Detail;
+        error.data?.message ||
+        error.data?.Message ||
+        error.data?.error ||
+        error.data?.Error ||
+        error.data?.detail ||
+        error.data?.Detail;
 
-    if (errorsText || guessedMessage) return errorsText || guessedMessage;
+    if (guessedMessage) return guessedMessage;
     return error.message !== "Request failed" ? error.message : "Something went wrong. Please try again.";
 }

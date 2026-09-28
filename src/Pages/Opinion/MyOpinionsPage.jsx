@@ -78,11 +78,19 @@ export default function MyOpinionsPage() {
                 </span>
             );
         }
+        if (status === "RevisionRequired") {
+            return (
+                <span className="inline-flex items-center gap-1 rounded-full bg-purple-500/15 border border-purple-500/30 px-3 py-1 text-xs font-bold text-purple-400">
+                    <AlertCircle className="h-3.5 w-3.5" />
+                    <span>{isAr ? "يتطلب تعديل" : "Revision Required"}</span>
+                </span>
+            );
+        }
         if (status === "Rejected") {
             return (
                 <span className="inline-flex items-center gap-1 rounded-full bg-red-500/15 border border-red-500/30 px-3 py-1 text-xs font-bold text-red-500">
                     <XCircle className="h-3.5 w-3.5" />
-                    <span>{isAr ? "مرفوض (يتطلب تعديل)" : "Rejected (Needs Edit)"}</span>
+                    <span>{isAr ? "مرفوض" : "Rejected"}</span>
                 </span>
             );
         }
@@ -139,8 +147,9 @@ export default function MyOpinionsPage() {
                         <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto">
                             {[
                                 { key: "ALL", label: isAr ? "كافة الآراء" : "All Opinions" },
-                                { key: "Approved", label: isAr ? "المعتمدة" : "Approved" },
                                 { key: "Pending", label: isAr ? "قيد المراجعة" : "Pending" },
+                                { key: "RevisionRequired", label: isAr ? "يتطلب تعديل" : "Revision Required" },
+                                { key: "Approved", label: isAr ? "المعتمدة" : "Approved" },
                                 { key: "Rejected", label: isAr ? "المرفوضة" : "Rejected" },
                             ].map((tab) => (
                                 <button
@@ -197,7 +206,7 @@ export default function MyOpinionsPage() {
                         {opinions.map((op) => (
                             <div
                                 key={op.id}
-                                onClick={() => setSelectedOpinion(op)}
+                                onClick={() => navigate(`/opinions/${op.id}`)}
                                 className="group flex flex-col justify-between rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0B1120]/80 p-6 shadow-xl dark:shadow-[0_10px_30px_rgba(0,0,0,0.3)] backdrop-blur-md transition-all hover:-translate-y-1 hover:border-purple-500/40 cursor-pointer"
                             >
                                 <div>
@@ -252,7 +261,7 @@ export default function MyOpinionsPage() {
                                             </button>
                                         )}
                                         <span className="text-xs font-bold text-purple-500 flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
-                                            <span>{isAr ? "عرض" : "View"}</span>
+                                            <span>{isAr ? "عرض وتعديل" : "View & Edit"}</span>
                                             <Eye className="h-3.5 w-3.5" />
                                         </span>
                                     </div>

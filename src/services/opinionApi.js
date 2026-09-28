@@ -182,57 +182,19 @@ export async function submitLegalOpinion(opinionData, file) {
         throw new ApiError("يرجى إدخال كافة الحقول الإلزامية: العنوان، السؤال، والرأي القانوني.", 400);
     }
 
-    try {
-        const formData = new FormData();
-        formData.append("Title", opinionData.title.trim());
-        formData.append("Question", opinionData.question.trim());
-        formData.append("Answer", opinionData.answer.trim());
-        if (file) {
-            formData.append("File", file);
-        }
-
-        const realResult = await request("/api/LegalOpinion", {
-            method: "POST",
-            body: formData,
-        });
-        if (realResult) return realResult;
-    } catch (err) {
-        if (err?.status || err?.rawResponse) {
-            throw err;
-        }
-        // Fallback for offline demo
+    const formData = new FormData();
+    formData.append("Title", opinionData.title.trim());
+    formData.append("Question", opinionData.question.trim());
+    formData.append("Answer", opinionData.answer.trim());
+    if (file) {
+        formData.append("File", file);
     }
 
-    await wait(MOCK_DELAY_MS);
-
-    const session = getSession();
-    const advisorName = session?.user?.firstName
-        ? `${session.user.firstName} ${session.user.lastName || ""}`.trim()
-        : "المستشار الحالي";
-
-    const newOpinion = {
-        id: Date.now(),
-        title: opinionData.title.trim(),
-        question: opinionData.question.trim(),
-        answer: opinionData.answer?.trim() || "",
-        createdByName: advisorName,
-        submittedBy: advisorName,
-        createdAt: new Date().toISOString().split("T")[0],
-        status: "Pending",
-        statusCode: 1,
-        rejectionReason: null,
-        document: file
-            ? {
-                  fileName: file.name,
-                  fileSize: file.size,
-                  fileType: file.name.split(".").pop()?.toUpperCase() || "PDF",
-              }
-            : null,
-        reviews: [],
-    };
-
-    mockOpinions.unshift(newOpinion);
-    return newOpinion;
+    const realResult = await request("/api/LegalOpinion", {
+        method: "POST",
+        body: formData,
+    });
+    return realResult;
 }
 
 /**
@@ -243,13 +205,38 @@ export async function getMyOpinions(filters = {}) {
     try {
         const data = await request("/api/LegalOpinion/Legal-Advisor-Opinions", { method: "GET" });
         if (Array.isArray(data)) {
-            let list = data.map((op) => ({
-                ...op,
-                status: normalizeOpinionStatusName(op.status),
-                statusCode: typeof op.status === "number" ? op.status : op.statusCode,
-            }));
+            let list = data.map((op) => {
+                const normalizedStatus = normalizeOpinionStatusName(op.status);
+                const numStatus =
+                    typeof op.status === "number"
+                        ? op.status
+                        : op.statusCode ||
+                          (normalizedStatus === "Approved"
+                              ? 2
+                              : normalizedStatus === "Rejected"
+                              ? 3
+                              : normalizedStatus === "RevisionRequired"
+                              ? 4
+                              : 1);
+                return {
+                    ...op,
+                    status: normalizedStatus,
+                    statusCode: numStatus,
+                };
+            });
+
             if (filters.status && filters.status !== "ALL") {
-                list = list.filter((op) => op.status === filters.status);
+                if (filters.status === "Pending") {
+                    list = list.filter((op) => op.status === "Pending" || op.statusCode === 1);
+                } else if (filters.status === "Approved") {
+                    list = list.filter((op) => op.status === "Approved" || op.statusCode === 2);
+                } else if (filters.status === "Rejected") {
+                    list = list.filter((op) => op.status === "Rejected" || op.statusCode === 3);
+                } else if (filters.status === "RevisionRequired") {
+                    list = list.filter((op) => op.status === "RevisionRequired" || op.statusCode === 4);
+                } else {
+                    list = list.filter((op) => op.status === filters.status);
+                }
             }
             if (filters.search) {
                 const q = filters.search.toLowerCase();
@@ -258,14 +245,12 @@ export async function getMyOpinions(filters = {}) {
             return list;
         }
     } catch (err) {
-        if (err?.status || err?.rawResponse) {
+        if (getToken()) {
             throw err;
         }
-        // Fallback for offline demo only
     }
 
     await wait(MOCK_DELAY_MS);
-
     let list = [...mockOpinions];
     if (filters.status && filters.status !== "ALL") {
         list = list.filter((op) => op.status === filters.status);
@@ -285,13 +270,38 @@ export async function getAllOpinions(filters = {}) {
     try {
         const data = await request("/api/LegalOpinion", { method: "GET" });
         if (Array.isArray(data)) {
-            let list = data.map((op) => ({
-                ...op,
-                status: normalizeOpinionStatusName(op.status),
-                statusCode: typeof op.status === "number" ? op.status : op.statusCode,
-            }));
+            let list = data.map((op) => {
+                const normalizedStatus = normalizeOpinionStatusName(op.status);
+                const numStatus =
+                    typeof op.status === "number"
+                        ? op.status
+                        : op.statusCode ||
+                          (normalizedStatus === "Approved"
+                              ? 2
+                              : normalizedStatus === "Rejected"
+                              ? 3
+                              : normalizedStatus === "RevisionRequired"
+                              ? 4
+                              : 1);
+                return {
+                    ...op,
+                    status: normalizedStatus,
+                    statusCode: numStatus,
+                };
+            });
+
             if (filters.status && filters.status !== "ALL") {
-                list = list.filter((op) => op.status === filters.status);
+                if (filters.status === "Pending") {
+                    list = list.filter((op) => op.status === "Pending" || op.statusCode === 1);
+                } else if (filters.status === "Approved") {
+                    list = list.filter((op) => op.status === "Approved" || op.statusCode === 2);
+                } else if (filters.status === "Rejected") {
+                    list = list.filter((op) => op.status === "Rejected" || op.statusCode === 3);
+                } else if (filters.status === "RevisionRequired") {
+                    list = list.filter((op) => op.status === "RevisionRequired" || op.statusCode === 4);
+                } else {
+                    list = list.filter((op) => op.status === filters.status);
+                }
             }
             if (filters.search) {
                 const q = filters.search.toLowerCase();
@@ -304,10 +314,9 @@ export async function getAllOpinions(filters = {}) {
             return list;
         }
     } catch (err) {
-        if (err?.status || err?.rawResponse) {
+        if (getToken()) {
             throw err;
         }
-        // Fallback for offline demo only
     }
 
     await wait(MOCK_DELAY_MS);
@@ -341,15 +350,27 @@ export async function getPendingOpinions() {
 export async function getOpinionById(id) {
     try {
         const data = await request(`/api/LegalOpinion/${id}`, { method: "GET" });
-        if (data) {
+        if (data && typeof data === "object") {
+            const normalizedStatus = normalizeOpinionStatusName(data.status);
+            const numStatus =
+                typeof data.status === "number"
+                    ? data.status
+                    : data.statusCode ||
+                      (normalizedStatus === "Approved"
+                          ? 2
+                          : normalizedStatus === "Rejected"
+                          ? 3
+                          : normalizedStatus === "RevisionRequired"
+                          ? 4
+                          : 1);
             return {
                 ...data,
-                status: normalizeOpinionStatusName(data.status),
-                statusCode: typeof data.status === "number" ? data.status : data.statusCode,
+                status: normalizedStatus,
+                statusCode: numStatus,
             };
         }
     } catch (err) {
-        if (err?.status || err?.rawResponse) {
+        if (getToken()) {
             throw err;
         }
     }
@@ -368,51 +389,41 @@ export async function getOpinionById(id) {
  * Decision: 1=Approved, 2=Rejected, 3=RevisionRequired
  */
 export async function reviewOpinion(id, decision, comments = "") {
-    try {
-        const body = {
-            Decision: decision,
-            Comments: comments ? comments.trim() : null,
-            decision,
-            comments: comments ? comments.trim() : null,
-        };
-        const realResult = await request(`/api/LegalOpinion/${id}/Review`, {
-            method: "POST",
-            body,
-        });
-        if (realResult) return realResult;
-    } catch (err) {
-        if (err?.status || err?.rawResponse) {
-            throw err;
-        }
-    }
+    const numDecision = Number(decision);
+    const trimmedComments = comments ? String(comments).trim() : null;
 
-    await wait(MOCK_DELAY_MS);
-    const index = mockOpinions.findIndex((op) => String(op.id) === String(id));
-    if (index === -1) {
-        throw new ApiError("الرأي القانوني غير موجود.", 404);
+    const body = {
+        Decision: numDecision,
+        Comments: trimmedComments,
+    };
+
+    // 1. Send the review request to the backend
+    await request(`/api/LegalOpinion/${id}/Review`, {
+        method: "POST",
+        body,
+    });
+
+    // 2. Fetch fresh opinion details from the backend to ensure accurate, live data
+    try {
+        const fresh = await getOpinionById(id);
+        if (fresh && typeof fresh === "object" && fresh.id) {
+            return fresh;
+        }
+    } catch {
+        // Fallback to optimistic object below if transient GET fails
     }
 
     const statusName =
-        decision === 1 ? "Approved" : decision === 2 ? "Rejected" : "RevisionRequired";
-    const statusCode = decision === 1 ? 2 : decision === 2 ? 3 : 4;
+        numDecision === 1 ? "Approved" : numDecision === 2 ? "Rejected" : "RevisionRequired";
+    const statusCode = numDecision === 1 ? 2 : numDecision === 2 ? 3 : 4;
 
-    mockOpinions[index] = {
-        ...mockOpinions[index],
+    return {
+        id,
         status: statusName,
         statusCode,
-        rejectionReason: decision !== 1 ? (comments ? comments.trim() : null) : null,
-        reviews: [
-            ...(mockOpinions[index].reviews || []),
-            {
-                reviewerName: "المدير الحالي",
-                decision,
-                comments: comments ? comments.trim() : null,
-                createdAt: new Date().toISOString(),
-            },
-        ],
+        rejectionReason: numDecision !== 1 ? trimmedComments : null,
+        success: true,
     };
-
-    return { ...mockOpinions[index] };
 }
 
 export async function approveOpinion(id, comments = "") {
@@ -432,44 +443,53 @@ export async function requestRevisionOpinion(id, reason = "") {
  * Body: [FromBody] UpdateLegalOpinionDTO { Title?, Question?, Answer? }
  */
 export async function resubmitOpinion(id, updatedFields) {
-    const titleVal = updatedFields.title?.trim() || updatedFields.Title?.trim();
-    const questionVal = updatedFields.question?.trim() || updatedFields.Question?.trim();
-    const answerVal = updatedFields.answer?.trim() || updatedFields.Answer?.trim();
+    const titleVal = (updatedFields.title || updatedFields.Title || "").trim();
+    const questionVal = (updatedFields.question || updatedFields.Question || "").trim();
+    const answerVal = (updatedFields.answer || updatedFields.Answer || "").trim();
 
+    if (!titleVal || !questionVal || !answerVal) {
+        throw new ApiError("يرجى ملء كافة الحقول (العنوان، السؤال، والرأي).", 400);
+    }
+
+    const body = {
+        Title: titleVal,
+        Question: questionVal,
+        Answer: answerVal,
+    };
+
+    const res = await request(`/api/LegalOpinion/${id}/Resubmit`, {
+        method: "PUT",
+        body,
+    });
+
+    if (res && typeof res === "object" && res.id) {
+        const normalizedStatus = normalizeOpinionStatusName(res.status);
+        return {
+            ...res,
+            status: normalizedStatus,
+            statusCode: typeof res.status === "number" ? res.status : (res.statusCode || 1),
+        };
+    }
+
+    // If backend returned rows affected or minimal response, fetch fresh data
     try {
-        const body = {
-            Title: titleVal,
-            Question: questionVal,
-            Answer: answerVal,
-            title: titleVal,
-            question: questionVal,
-            answer: answerVal,
-        };
-        const result = await request(`/api/LegalOpinion/${id}/Resubmit`, {
-            method: "PUT",
-            body,
-        });
-        if (result) return result;
-    } catch (err) {
-        if (err?.status || err?.rawResponse) {
-            throw err;
+        const fresh = await getOpinionById(id);
+        if (fresh && typeof fresh === "object" && fresh.id) {
+            return fresh;
         }
+    } catch {
+        // Fallback optimistic
     }
 
-    await wait(MOCK_DELAY_MS);
-    const index = mockOpinions.findIndex((op) => String(op.id) === String(id));
-    if (index !== -1) {
-        mockOpinions[index] = {
-            ...mockOpinions[index],
-            title: titleVal || mockOpinions[index].title,
-            question: questionVal || mockOpinions[index].question,
-            answer: answerVal || mockOpinions[index].answer,
-            status: "Pending",
-            statusCode: 1,
-        };
-        return mockOpinions[index];
-    }
-    return null;
+    return {
+        id,
+        title: titleVal,
+        question: questionVal,
+        answer: answerVal,
+        status: "Pending",
+        statusCode: 1,
+        success: true,
+    };
 }
 
 /**
@@ -477,18 +497,8 @@ export async function resubmitOpinion(id, updatedFields) {
  * Deletes an opinion draft (any opinion that is NOT approved)
  */
 export async function deleteOpinion(id) {
-    try {
-        const res = await request(`/api/LegalOpinion/${id}`, { method: "DELETE" });
-        if (res) return res;
-    } catch (err) {
-        if (err?.status || err?.rawResponse) {
-            throw err;
-        }
-    }
-
-    await wait(MOCK_DELAY_MS);
-    mockOpinions = mockOpinions.filter((op) => String(op.id) !== String(id));
-    return { success: true };
+    const res = await request(`/api/LegalOpinion/${id}`, { method: "DELETE" });
+    return res || { success: true };
 }
 
 /**

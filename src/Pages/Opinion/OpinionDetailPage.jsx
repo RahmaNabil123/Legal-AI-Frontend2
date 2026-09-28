@@ -142,15 +142,19 @@ export default function OpinionDetailPage() {
 
         try {
             const updated = await reviewOpinion(id, reviewDecision, reviewComments.trim());
-            setOpinion(updated);
+            if (updated && typeof updated === "object") {
+                setOpinion((prev) => ({ ...prev, ...updated }));
+            }
+            fetchOpinionData();
             setReviewModalOpen(false);
+            setReviewComments("");
 
             if (reviewDecision === 1) {
-                setActionSuccess(isAr ? "تم اعتماد الفتوى بنجاح وفهرستها في الذكاء الاصطناعي." : "Opinion approved and indexed.");
+                setActionSuccess(isAr ? "تم قبول واعتماد الفتوى القانونية بنجاح." : "Opinion approved successfully.");
             } else if (reviewDecision === 2) {
                 setActionSuccess(isAr ? "تم رفض الفتوى وتسجيل القرار." : "Opinion rejected.");
             } else {
-                setActionSuccess(isAr ? "تم إحالة الفتوى للمستشار لإجراء التعديلات المطلوبة." : "Revision requested from advisor.");
+                setActionSuccess(isAr ? "تم إرسال طلب التعديل إلى المستشار القانوني بنجاح." : "Revision requested from advisor successfully.");
             }
         } catch (err) {
             setActionError(getErrorMessage(err));
@@ -177,13 +181,12 @@ export default function OpinionDetailPage() {
                 question: editQuestion.trim(),
                 answer: editAnswer.trim(),
             });
-            if (updated) {
-                setOpinion(updated);
-            } else {
-                await fetchOpinionData();
+            if (updated && typeof updated === "object") {
+                setOpinion((prev) => ({ ...prev, ...updated }));
             }
+            fetchOpinionData();
             setIsEditing(false);
-            setActionSuccess(isAr ? "تم حفظ التعديلات وإعادة إرسال الفتوى لقيد المراجعة بنجاح." : "Opinion resubmitted for review successfully.");
+            setActionSuccess(isAr ? "تم إرسال التعديل بنجاح وإعادة الفتوى لقيد المراجعة." : "Opinion resubmitted for review successfully.");
         } catch (err) {
             setEditError(getErrorMessage(err));
         } finally {

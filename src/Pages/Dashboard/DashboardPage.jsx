@@ -579,7 +579,7 @@ export default function DashboardPage() {
 
                                         <button
                                             type="button"
-                                            onClick={() => navigate(`/review-opinion/${op.id}`)}
+                                            onClick={() => navigate(`/opinions/${op.id}`)}
                                             className="inline-flex items-center gap-1 text-xs font-bold text-emerald-500 hover:underline self-end sm:self-center"
                                         >
                                             <span>{isAr ? "فحص واعتماد" : "Review"}</span>

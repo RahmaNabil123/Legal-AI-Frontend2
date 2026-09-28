@@ -92,7 +92,7 @@ export default function ReviewQueuePage() {
                             return (
                                 <Link
                                     key={opinion.id}
-                                    to={`/review-opinion/${opinion.id}`}
+                                    to={`/opinions/${opinion.id}`}
                                     className="group block rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0B1120]/80 p-6 sm:p-7 shadow-sm backdrop-blur-md hover:border-blue-500/40 hover:shadow-xl dark:hover:shadow-[0_10px_30px_rgba(37,99,235,0.15)] transition-all duration-200"
                                 >
                                     <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
