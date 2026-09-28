@@ -370,9 +370,12 @@ export async function getOpinionById(id) {
             };
         }
     } catch (err) {
-        if (getToken()) {
-            throw err;
+        // If it's a mock ID or server is unreachable, check mockOpinions first
+        const found = mockOpinions.find((op) => String(op.id) === String(id));
+        if (found) {
+            return { ...found };
         }
+        throw err;
     }
 
     await wait(MOCK_DELAY_MS);
@@ -397,33 +400,50 @@ export async function reviewOpinion(id, decision, comments = "") {
         Comments: trimmedComments,
     };
 
-    // 1. Send the review request to the backend
-    await request(`/api/LegalOpinion/${id}/Review`, {
-        method: "POST",
-        body,
-    });
-
-    // 2. Fetch fresh opinion details from the backend to ensure accurate, live data
     try {
-        const fresh = await getOpinionById(id);
-        if (fresh && typeof fresh === "object" && fresh.id) {
-            return fresh;
+        // 1. Send the review request to the backend
+        await request(`/api/LegalOpinion/${id}/Review`, {
+            method: "POST",
+            body,
+        });
+
+        // 2. Fetch fresh opinion details from the backend to ensure accurate, live data
+        try {
+            const fresh = await getOpinionById(id);
+            if (fresh && typeof fresh === "object" && fresh.id) {
+                return fresh;
+            }
+        } catch {
+            // Fallback to optimistic object below if transient GET fails
         }
-    } catch {
-        // Fallback to optimistic object below if transient GET fails
+
+        const statusName =
+            numDecision === 1 ? "Approved" : numDecision === 2 ? "Rejected" : "RevisionRequired";
+        const statusCode = numDecision === 1 ? 2 : numDecision === 2 ? 3 : 4;
+
+        return {
+            id,
+            status: statusName,
+            statusCode,
+            rejectionReason: numDecision !== 1 ? trimmedComments : null,
+            success: true,
+        };
+    } catch (err) {
+        const index = mockOpinions.findIndex((op) => String(op.id) === String(id));
+        if (index !== -1 && !err?.status) {
+            const statusName =
+                numDecision === 1 ? "Approved" : numDecision === 2 ? "Rejected" : "RevisionRequired";
+            const statusCode = numDecision === 1 ? 2 : numDecision === 2 ? 3 : 4;
+            mockOpinions[index] = {
+                ...mockOpinions[index],
+                status: statusName,
+                statusCode,
+                rejectionReason: numDecision !== 1 ? trimmedComments : null,
+            };
+            return { ...mockOpinions[index] };
+        }
+        throw err;
     }
-
-    const statusName =
-        numDecision === 1 ? "Approved" : numDecision === 2 ? "Rejected" : "RevisionRequired";
-    const statusCode = numDecision === 1 ? 2 : numDecision === 2 ? 3 : 4;
-
-    return {
-        id,
-        status: statusName,
-        statusCode,
-        rejectionReason: numDecision !== 1 ? trimmedComments : null,
-        success: true,
-    };
 }
 
 export async function approveOpinion(id, comments = "") {
@@ -457,39 +477,55 @@ export async function resubmitOpinion(id, updatedFields) {
         Answer: answerVal,
     };
 
-    const res = await request(`/api/LegalOpinion/${id}/Resubmit`, {
-        method: "PUT",
-        body,
-    });
-
-    if (res && typeof res === "object" && res.id) {
-        const normalizedStatus = normalizeOpinionStatusName(res.status);
-        return {
-            ...res,
-            status: normalizedStatus,
-            statusCode: typeof res.status === "number" ? res.status : (res.statusCode || 1),
-        };
-    }
-
-    // If backend returned rows affected or minimal response, fetch fresh data
     try {
-        const fresh = await getOpinionById(id);
-        if (fresh && typeof fresh === "object" && fresh.id) {
-            return fresh;
-        }
-    } catch {
-        // Fallback optimistic
-    }
+        const res = await request(`/api/LegalOpinion/${id}/Resubmit`, {
+            method: "PUT",
+            body,
+        });
 
-    return {
-        id,
-        title: titleVal,
-        question: questionVal,
-        answer: answerVal,
-        status: "Pending",
-        statusCode: 1,
-        success: true,
-    };
+        if (res && typeof res === "object" && res.id) {
+            const normalizedStatus = normalizeOpinionStatusName(res.status);
+            return {
+                ...res,
+                status: normalizedStatus,
+                statusCode: typeof res.status === "number" ? res.status : (res.statusCode || 1),
+            };
+        }
+
+        // If backend returned rows affected or minimal response, fetch fresh data
+        try {
+            const fresh = await getOpinionById(id);
+            if (fresh && typeof fresh === "object" && fresh.id) {
+                return fresh;
+            }
+        } catch {
+            // Fallback optimistic
+        }
+
+        return {
+            id,
+            title: titleVal,
+            question: questionVal,
+            answer: answerVal,
+            status: "Pending",
+            statusCode: 1,
+            success: true,
+        };
+    } catch (err) {
+        const index = mockOpinions.findIndex((op) => String(op.id) === String(id));
+        if (index !== -1 && !err?.status) {
+            mockOpinions[index] = {
+                ...mockOpinions[index],
+                title: titleVal,
+                question: questionVal,
+                answer: answerVal,
+                status: "Pending",
+                statusCode: 1,
+            };
+            return { ...mockOpinions[index] };
+        }
+        throw err;
+    }
 }
 
 /**
