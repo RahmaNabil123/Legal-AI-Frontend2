@@ -160,80 +160,49 @@ let mockUsers = [
     },
 ];
 
-const usersCache = new Map();
-
-// Seed initial cache from mock users
-mockUsers.forEach((u) => {
-    if (u && u.id) usersCache.set(String(u.id), u);
-});
-
 /**
  * GET /api/PrivilegesAdmin/Users
  * Or GET /api/PrivilegesAdmin/Users/{roleId}
+ * Or GET /api/PrivilegesAdmin/Users/Search?name=...
  */
 export async function getUsers(filters = {}) {
-    let list = [];
-    let backendSuccess = false;
-
     try {
         let endpoint = "/api/PrivilegesAdmin/Users";
-        if (filters.role && filters.role !== "ALL") {
+
+        if (filters.search) {
+            // Check if search is a phone number or name
+            const isPhone = /^\d+$/.test(filters.search.trim());
+            const param = isPhone ? `phoneNumber=${encodeURIComponent(filters.search.trim())}` : `name=${encodeURIComponent(filters.search.trim())}`;
+            endpoint = `/api/PrivilegesAdmin/Users/Search?${param}`;
+        } else if (filters.role && filters.role !== "ALL") {
             const roleNum = mapRoleToEnumNumber(filters.role);
             endpoint = `/api/PrivilegesAdmin/Users/${roleNum}`;
         }
 
         const data = await request(endpoint, { method: "GET" });
-        if (Array.isArray(data)) {
-            list = data;
-            backendSuccess = true;
-            data.forEach((u) => {
-                if (u && u.id) usersCache.set(String(u.id), u);
-            });
-        }
+        if (Array.isArray(data)) return data;
     } catch {
-        // Backend offline or error -> fallback to mock data
+        // Fallback to local filtering
     }
 
-    if (!backendSuccess) {
-        await wait(MOCK_DELAY_MS);
-        list = [...mockUsers];
-        mockUsers.forEach((u) => {
-            if (u && u.id) usersCache.set(String(u.id), u);
-        });
-    }
+    await wait(MOCK_DELAY_MS);
 
-    // Apply search filter consistently across both backend and mock data
+    let list = [...mockUsers];
     if (filters.search) {
-        const q = filters.search.trim().toLowerCase();
-        list = list.filter((u) => {
-            const fullName = `${u.firstName || ""} ${u.lastName || ""}`.trim().toLowerCase();
-            const revFullName = `${u.lastName || ""} ${u.firstName || ""}`.trim().toLowerCase();
-            const first = (u.firstName || "").toLowerCase();
-            const last = (u.lastName || "").toLowerCase();
-            const email = (u.email || "").toLowerCase();
-            const username = (u.userName || "").toLowerCase();
-            const phone = (u.phoneNumber || "").toLowerCase();
-
-            return (
-                fullName.includes(q) ||
-                revFullName.includes(q) ||
-                first.includes(q) ||
-                last.includes(q) ||
-                email.includes(q) ||
-                username.includes(q) ||
-                phone.includes(q)
-            );
-        });
-    }
-
-    if (filters.role && filters.role !== "ALL") {
+        const q = filters.search.toLowerCase();
         list = list.filter(
             (u) =>
-                u.role === filters.role ||
-                mapRoleToEnumNumber(u.role) === mapRoleToEnumNumber(filters.role)
+                u.firstName.toLowerCase().includes(q) ||
+                u.lastName.toLowerCase().includes(q) ||
+                `${u.firstName || ""} ${u.lastName || ""}`.toLowerCase().includes(q) ||
+                u.email.toLowerCase().includes(q) ||
+                u.userName.toLowerCase().includes(q) ||
+                (u.phoneNumber && u.phoneNumber.includes(q))
         );
     }
-
+    if (filters.role && filters.role !== "ALL") {
+        list = list.filter((u) => u.role === filters.role);
+    }
     if (filters.status && filters.status !== "ALL") {
         const isActive = filters.status === "ACTIVE";
         list = list.filter((u) => u.isActive === isActive);
@@ -243,7 +212,7 @@ export async function getUsers(filters = {}) {
 }
 
 /**
- * GET /api/PrivilegesAdmin/Users/{id}
+ * GET /api/Admin/Users/{id}/activities or /api/PrivilegesAdmin/User/{id}
  * Returns UserActivityResultDTO:
  * {
  *   profile: UserProfileResultDTO,
@@ -254,81 +223,39 @@ export async function getUsers(filters = {}) {
  * }
  */
 export async function getUserById(id) {
-    if (!id) throw new ApiError("معرف المستخدم غير محدد.", 400);
-    const stringId = String(id).trim();
-
     try {
         let data = null;
-        // Priority 1: Section 10.12 official route: /api/PrivilegesAdmin/Users/{id}
         try {
-            data = await request(`/api/PrivilegesAdmin/Users/${stringId}`, { method: "GET" });
+            data = await request(`/api/PrivilegesAdmin/User/${id}`, { method: "GET" });
         } catch {
-            // Priority 2: Singular fallback: /api/PrivilegesAdmin/User/{id}
-            try {
-                data = await request(`/api/PrivilegesAdmin/User/${stringId}`, { method: "GET" });
-            } catch {
-                // Priority 3: Alternative admin activities route
-                data = await request(`/api/Admin/Users/${stringId}/activities`, { method: "GET" });
-            }
+            data = await request(`/api/Admin/Users/${id}/activities`, { method: "GET" });
         }
 
         if (data) {
             const profile = data.profile || data;
-            const normalized = {
+            return {
                 ...profile,
                 profile,
-                id: String(profile.id || stringId),
+                id: String(profile.id || id),
                 uploadedDocuments: data.uploadedDocuments || profile.uploadedDocuments || [],
                 createdOpinions: data.createdOpinions || profile.createdOpinions || [],
                 reviewedOpinions: data.reviewedOpinions || profile.reviewedOpinions || [],
                 opinionReviewsCount: data.opinionReviewsCount ?? profile.opinionReviewsCount ?? (data.reviewedOpinions?.length || 0),
             };
-            usersCache.set(String(normalized.id), normalized);
-            return normalized;
         }
-    } catch {
-        // Fallback to cache / mock
+    } catch (err) {
+        if (err?.status && err?.status !== 404) {
+            throw err;
+        }
     }
 
     await wait(MOCK_DELAY_MS);
-
-    // 1. Check in runtime cache
-    if (usersCache.has(stringId)) {
-        const cached = usersCache.get(stringId);
-        return {
-            ...cached,
-            profile: cached,
-            id: String(cached.id || stringId),
-            uploadedDocuments: cached.uploadedDocuments || [],
-            createdOpinions: cached.createdOpinions || [],
-            reviewedOpinions: cached.reviewedOpinions || [],
-            opinionReviewsCount: cached.opinionReviewsCount ?? (cached.reviewedOpinions?.length || 0),
-        };
-    }
-
-    // 2. Check in mockUsers by id, userName, or email
-    const user = mockUsers.find(
-        (u) =>
-            String(u.id) === stringId ||
-            (u.userName && String(u.userName).toLowerCase() === stringId.toLowerCase()) ||
-            (u.email && String(u.email).toLowerCase() === stringId.toLowerCase())
-    );
-
-    if (!user) {
-        throw new ApiError("المستخدم غير موجود.", 404);
-    }
-
-    const fallbackUser = {
+    const user = mockUsers.find((u) => String(u.id) === String(id));
+    if (!user) throw new ApiError("المستخدم غير موجود.", 404);
+    return {
         ...user,
         profile: user,
-        id: String(user.id),
-        uploadedDocuments: user.uploadedDocuments || [],
-        createdOpinions: user.createdOpinions || [],
-        reviewedOpinions: user.reviewedOpinions || [],
-        opinionReviewsCount: user.opinionReviewsCount ?? (user.reviewedOpinions?.length || 0),
     };
-    usersCache.set(String(fallbackUser.id), fallbackUser);
-    return fallbackUser;
 }
 
 /**

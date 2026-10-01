@@ -103,17 +103,9 @@ export default function ReviewOpinionPage() {
                 setActionSuccess(isAr ? "تم إرسال طلب التعديل للمستشار القانوني بنجاح." : "Revision requested successfully.");
             }
 
-            const statusName =
-                modalDecision === 1 ? "Approved" : modalDecision === 2 ? "Rejected" : "RevisionRequired";
-            const statusCode = modalDecision === 1 ? 2 : modalDecision === 2 ? 3 : 4;
-
-            setOpinion((prev) => ({
-                ...prev,
-                ...(updated && typeof updated === "object" ? updated : {}),
-                status: statusName,
-                statusCode,
-                rejectionReason: modalDecision !== 1 ? modalComment.trim() : null,
-            }));
+            if (updated && typeof updated === "object") {
+                setOpinion((prev) => ({ ...prev, ...updated }));
+            }
             setModalDecision(null);
             setModalComment("");
         } catch (err) {
@@ -326,8 +318,8 @@ export default function ReviewOpinionPage() {
                                     </p>
                                     <p className="text-xs text-slate-500 dark:text-slate-400">
                                         {isAr
-                                            ? "يمكنك اتخاذ أحد القرارات الثلاثة (قبول، رفض، أو طلب تعديل) مع إضافة تعليق اختياري."
-                                            : "Choose one of the 3 decisions (Approve, Reject, or Request Revision) with optional comments."}
+                                            ? "يمكنك اتخاذ أحد القرارات الثلاثة (قبول، رفض، أو طلب تعديل) مع إضافة تعليق للمستشار."
+                                            : "Choose one of the 3 decisions (Approve, Reject, or Request Revision) with comments."}
                                     </p>
                                 </div>
 
@@ -473,7 +465,7 @@ export default function ReviewOpinionPage() {
                         <div className="space-y-3">
                             <label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
                                 <MessageSquare className="h-4 w-4 text-blue-500" />
-                                <span>{isAr ? "تعليق وملاحظات إضافية (اختياري):" : "Decision Comments / Notes (Optional):"}</span>
+                                <span>{isAr ? "تعليق وملاحظات إضافية:" : "Decision Comments / Notes:"}</span>
                             </label>
                             <textarea
                                 rows={4}
@@ -481,10 +473,10 @@ export default function ReviewOpinionPage() {
                                 onChange={(e) => setModalComment(e.target.value)}
                                 placeholder={
                                     modalDecision === 1
-                                        ? (isAr ? "أضف أي توجيهات أو ملاحظات إيجابية للمستشار... (اختياري)" : "Add optional praise or notes...")
+                                        ? (isAr ? "أضف أي توجيهات أو ملاحظات إيجابية للمستشار..." : "Add praise or notes...")
                                         : modalDecision === 2
-                                        ? (isAr ? "اذكر سبب الرفض لتوجيه المستشار القانوني... (اختياري)" : "State reasons for rejection...")
-                                        : (isAr ? "وضح النقاط التي تحتاج لإعادة بحث أو صياغة... (اختياري)" : "Specify areas requiring revision...")
+                                        ? (isAr ? "اذكر سبب الرفض لتوجيه المستشار القانوني..." : "State reasons for rejection...")
+                                        : (isAr ? "وضح النقاط التي تحتاج لإعادة بحث أو صياغة..." : "Specify areas requiring revision...")
                                 }
                                 className="w-full rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#0E1528] p-4 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
                             />

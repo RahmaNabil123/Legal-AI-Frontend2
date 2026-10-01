@@ -182,22 +182,14 @@ export default function OpinionDetailPage() {
                 answer: editAnswer.trim(),
             });
             if (updated && typeof updated === "object") {
-                setOpinion((prev) => ({
-                    ...prev,
-                    ...updated,
-                    title: editTitle.trim(),
-                    question: editQuestion.trim(),
-                    answer: editAnswer.trim(),
-                    status: "Pending",
-                    statusCode: 1,
-                    rejectionReason: null,
-                }));
-                setEditTitle(editTitle.trim());
-                setEditQuestion(editQuestion.trim());
-                setEditAnswer(editAnswer.trim());
+                setOpinion((prev) => ({ ...prev, ...updated }));
+                setEditTitle(updated.title || editTitle.trim());
+                setEditQuestion(updated.question || editQuestion.trim());
+                setEditAnswer(updated.answer || editAnswer.trim());
             }
             setIsEditing(false);
-            setActionSuccess(isAr ? "تم إرسال التعديل بنجاح وإعادة الفتوى لقيد المراجعة." : "Opinion resubmitted for review successfully.");
+            setActionSuccess(isAr ? "تم إرسال التعديل بنجاح وإعادة الفتوى لقيد مراجعة المدير." : "Opinion resubmitted for manager review successfully.");
+            fetchOpinionData();
         } catch (err) {
             setEditError(getErrorMessage(err));
         } finally {
@@ -250,11 +242,15 @@ export default function OpinionDetailPage() {
         }
     };
 
+    const latestReview = Array.isArray(opinion?.reviews) && opinion.reviews.length > 0 ? opinion.reviews[opinion.reviews.length - 1] : null;
+
     const statusCode = Number(opinion?.statusCode) || (opinion?.status === "Approved" ? 2 : opinion?.status === "Rejected" ? 3 : opinion?.status === "RevisionRequired" ? 4 : 1);
     const isApproved = statusCode === 2 || opinion?.status === "Approved" || String(opinion?.status).toLowerCase().includes("approved") || String(opinion?.status).includes("معتمد");
-    const isRevisionRequired = statusCode === 4 || opinion?.status === "RevisionRequired" || String(opinion?.status).toLowerCase().includes("revision") || String(opinion?.status).includes("تعديل");
     const isRejected = statusCode === 3 || opinion?.status === "Rejected" || String(opinion?.status).toLowerCase().includes("rejected") || String(opinion?.status).includes("مرفوض");
+    const isRevisionRequired = (statusCode === 4 || opinion?.status === "RevisionRequired" || String(opinion?.status).toLowerCase().includes("revision") || String(opinion?.status).includes("تعديل")) && !isApproved && !isRejected;
     const isPending = (statusCode === 1 || opinion?.status === "Pending" || opinion?.status === "Submitted" || String(opinion?.status).toLowerCase().includes("pending") || String(opinion?.status).includes("انتظار")) && !isApproved && !isRevisionRequired && !isRejected;
+
+    const revisionNotes = opinion?.rejectionReason || (isRevisionRequired ? latestReview?.comments : "") || "";
 
     // Format Date
     const formatDate = (dateStr) => {
@@ -289,17 +285,36 @@ export default function OpinionDetailPage() {
                         <span>{isAr ? "العودة لجدول الفتاوى" : "Back to Opinions Table"}</span>
                     </Link>
 
-                    {/* Delete Opinion Button (Allowed for Advisor draft opinions only, NEVER for Manager or Approved) */}
-                    {!isManager && !isApproved && (
-                        <button
-                            type="button"
-                            onClick={() => setShowDeleteModal(true)}
-                            className="inline-flex items-center gap-1.5 rounded-2xl border border-red-500/25 bg-red-500/10 hover:bg-red-500 hover:text-white px-4 py-2 text-xs sm:text-sm font-bold text-red-600 dark:text-red-400 transition-all cursor-pointer"
-                        >
-                            <Trash2 className="h-4 w-4" />
-                            <span>{isAr ? "حذف الفتوى" : "Delete Opinion"}</span>
-                        </button>
-                    )}
+                    <div className="flex items-center gap-3">
+                        {/* Edit Button for Advisor on any unapproved opinion */}
+                        {!isManager && !isApproved && !isEditing && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setEditTitle(opinion?.title || "");
+                                    setEditQuestion(opinion?.question || "");
+                                    setEditAnswer(opinion?.answer || "");
+                                    setIsEditing(true);
+                                }}
+                                className="inline-flex items-center gap-1.5 rounded-2xl bg-blue-600 hover:bg-blue-500 px-4 py-2 text-xs sm:text-sm font-bold text-white shadow-md transition-all cursor-pointer"
+                            >
+                                <FilePenLine className="h-4 w-4" />
+                                <span>{isAr ? "تعديل الفتوى" : "Edit Opinion"}</span>
+                            </button>
+                        )}
+
+                        {/* Delete Opinion Button (Allowed for Advisor draft opinions only, NEVER for Manager or Approved) */}
+                        {!isManager && !isApproved && (
+                            <button
+                                type="button"
+                                onClick={() => setShowDeleteModal(true)}
+                                className="inline-flex items-center gap-1.5 rounded-2xl border border-red-500/25 bg-red-500/10 hover:bg-red-500 hover:text-white px-4 py-2 text-xs sm:text-sm font-bold text-red-600 dark:text-red-400 transition-all cursor-pointer"
+                            >
+                                <Trash2 className="h-4 w-4" />
+                                <span>{isAr ? "حذف الفتوى" : "Delete Opinion"}</span>
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 {/* Notifications */}
@@ -415,7 +430,12 @@ export default function OpinionDetailPage() {
                                     {!isManager && !isEditing && (
                                         <button
                                             type="button"
-                                            onClick={() => setIsEditing(true)}
+                                            onClick={() => {
+                                                setEditTitle(opinion?.title || "");
+                                                setEditQuestion(opinion?.question || "");
+                                                setEditAnswer(opinion?.answer || "");
+                                                setIsEditing(true);
+                                            }}
                                             className="inline-flex items-center gap-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 px-4 py-2 text-xs font-bold text-white shadow-md transition-all cursor-pointer"
                                         >
                                             <FilePenLine className="h-3.5 w-3.5" />
@@ -423,13 +443,13 @@ export default function OpinionDetailPage() {
                                         </button>
                                     )}
                                 </div>
-                                {opinion.rejectionReason && (
+                                {revisionNotes && (
                                     <div className="space-y-1">
                                         <span className="text-[11px] font-extrabold uppercase tracking-wider text-purple-600 dark:text-purple-400">
                                             {isAr ? "الملاحظات المرسلة للمستشار:" : "Revision Notes:"}
                                         </span>
                                         <p className="text-sm font-medium text-slate-800 dark:text-slate-200 bg-white/60 dark:bg-black/20 p-3.5 rounded-xl">
-                                            "{opinion.rejectionReason}"
+                                            "{revisionNotes}"
                                         </p>
                                     </div>
                                 )}
@@ -805,7 +825,7 @@ export default function OpinionDetailPage() {
                             <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
                                 {reviewDecision === 3
                                     ? isAr ? "الملاحظات والتعديلات المطلوبة (مطلوب)" : "Revision Instructions (Required)"
-                                    : isAr ? "تعليق وملاحظات إضافية (اختياري)" : "Comments (Optional)"}
+                                    : isAr ? "تعليق وملاحظات إضافية" : "Comments"}
                                 {reviewDecision === 3 && <span className="text-red-500"> *</span>}
                             </label>
                             <textarea
@@ -814,9 +834,9 @@ export default function OpinionDetailPage() {
                                 onChange={(e) => setReviewComments(e.target.value)}
                                 placeholder={
                                     reviewDecision === 1
-                                        ? isAr ? "اكتب تعليق اعتماد إن رغبت (اختياري)..." : "Optional approval comments..."
+                                        ? isAr ? "اكتب تعليق الاعتماد..." : "Approval comments..."
                                         : reviewDecision === 2
-                                        ? isAr ? "اكتب سبب الرفض إن رغبت (اختياري)..." : "Optional rejection comments..."
+                                        ? isAr ? "اكتب سبب الرفض..." : "Rejection comments..."
                                         : isAr ? "مثال: راجع عليها تاني، أضف الاستناد للمادة 227 مدني..." : "e.g., Please refine statutory references..."
                                 }
                                 className="w-full rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0E1528] p-3.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-slate-400"

@@ -44,32 +44,148 @@ export function normalizeOpinionStatusName(status) {
     return status || "Pending";
 }
 
+export function normalizeOpinionRecord(op) {
+    if (!op || typeof op !== "object") return op;
+
+    const reviewsList = Array.isArray(op.reviews) ? op.reviews : [];
+    const latestReview = reviewsList.length > 0 ? reviewsList[reviewsList.length - 1] : null;
+
+    // Check if status or statusCode is explicitly provided on the opinion
+    const rawStatus = op.statusCode !== undefined && op.statusCode !== null ? op.statusCode : op.status;
+    let normalizedStatus;
+    let numStatus;
+
+    if (rawStatus !== undefined && rawStatus !== null && rawStatus !== "") {
+        normalizedStatus = normalizeOpinionStatusName(rawStatus);
+        numStatus =
+            typeof rawStatus === "number"
+                ? rawStatus
+                : normalizedStatus === "Approved"
+                ? 2
+                : normalizedStatus === "Rejected"
+                ? 3
+                : normalizedStatus === "RevisionRequired"
+                ? 4
+                : 1;
+    } else if (latestReview) {
+        // Fallback to review decision ONLY if the opinion object itself has no status
+        const latestDecision = latestReview.decisionCode || latestReview.decision;
+        if (latestDecision === 1 || latestDecision === "Approved" || String(latestDecision).toLowerCase().includes("approved")) {
+            normalizedStatus = "Approved";
+            numStatus = 2;
+        } else if (latestDecision === 2 || latestDecision === "Rejected" || String(latestDecision).toLowerCase().includes("rejected")) {
+            normalizedStatus = "Rejected";
+            numStatus = 3;
+        } else if (latestDecision === 3 || latestDecision === "RevisionRequired" || String(latestDecision).toLowerCase().includes("revision") || String(latestDecision).includes("تعديل")) {
+            normalizedStatus = "RevisionRequired";
+            numStatus = 4;
+        } else {
+            normalizedStatus = "Pending";
+            numStatus = 1;
+        }
+    } else {
+        normalizedStatus = "Pending";
+        numStatus = 1;
+    }
+
+    const rejectionReason =
+        op.rejectionReason ||
+        (normalizedStatus === "RevisionRequired" || normalizedStatus === "Rejected" ? latestReview?.comments : null) ||
+        null;
+
+    return {
+        ...op,
+        status: normalizedStatus,
+        statusCode: numStatus,
+        rejectionReason,
+        reviews: reviewsList,
+    };
+}
+
+const MOCK_STORAGE_KEY = "legal_ai_mock_opinions_store_v1";
+
+export function getMockOpinions() {
+    try {
+        if (typeof window !== "undefined" && window.localStorage) {
+            const stored = window.localStorage.getItem(MOCK_STORAGE_KEY);
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    return parsed;
+                }
+            }
+        }
+    } catch {}
+    return mockOpinions;
+}
+
+export function saveMockOpinions(list) {
+    mockOpinions = list;
+    try {
+        if (typeof window !== "undefined" && window.localStorage) {
+            window.localStorage.setItem(MOCK_STORAGE_KEY, JSON.stringify(list));
+        }
+    } catch {}
+}
+
 let mockOpinions = [
     {
-        id: 100,
-        title: "الرأي القانوني في مدى صحة شرط التحكيم المدرج في عقود التمويل الاستثماري",
-        question: "هل يعد شرط التحكيم المدرج في ملحق عقد التمويل الاستثماري نافذاً في مواجهة الكفيل المتضامن دون توقيعه المنفصل على الملحق؟",
-        answer:
-            "وفقاً لقانون التحكيم المصري رقم 27 لسنة 1994 وقواعد غرفة القاهرة للتحكيم التجاري، فإن شرط التحكيم ذو طبيعة استثنائية تستوجب رضاءً خاصاً.\n\nبما أن الكفيل المتضامن قد وقع على العقد الأصلي فقط دون التوقيع على الملحق المتضمن شرط التحكيم، فإن الشرط لا يسري في مواجهته، وتختص المحاكم الاقتصادية بنظر أي نزاع متعلق بضمانته المالية.",
-        createdByName: "المستشار أحمد فؤاد",
-        submittedBy: "المستشار أحمد فؤاد",
-        createdAt: "2026-09-28",
-        status: "RevisionRequired", // 4 (RevisionRequired - جاهزة لاختبار تعديل المستشار)
+        id: 2006,
+        title: "فتوة جديدة 2026",
+        question: "ما هي الشروط لاستخراج رخصة قيادة في مصر؟",
+        answer: "لازم تكون بتعرف تسوق",
+        createdByName: "Mohamed",
+        submittedBy: "Mohamed",
+        createdAt: "2026-09-29T01:38:25.5882824",
+        status: "RevisionRequired",
         statusCode: 4,
-        rejectionReason: "يرجى تدعيم الفتوى بالسند من أحكام محكمة النقض (الطعن رقم 1450 لسنة 88 ق)، وتوضيح الفارق بين حوالة الحق وتجديد الدين بالنسبة للكفيل قبل إعادة الاعتماد.",
-        document: {
-            fileName: "Arbitration_Finance_Clause_Draft.pdf",
-            fileSize: 942080,
-            fileType: "PDF",
-        },
+        rejectionReason: "راجع عليها تانى - يرجى كتابة الشروط القانونية كاملة وتوضيح السن القانوني والأوراق المطلوبة وفق قانون المرور المصري.",
+        document: null,
         reviews: [
             {
-                reviewerName: "د. طارق عبد الله",
-                decision: 3,
-                comments: "يرجى تدعيم الفتوى بالسند من أحكام محكمة النقض (الطعن رقم 1450 لسنة 88 ق)، وتوضيح الفارق بين حوالة الحق وتجديد الدين بالنسبة للكفيل قبل إعادة الاعتماد.",
-                createdAt: "2026-09-28 14:30",
+                reviewerName: "Khaled",
+                decision: "RevisionRequired",
+                decisionCode: 3,
+                comments: "راجع عليها تانى - يرجى كتابة الشروط القانونية كاملة وتوضيح السن القانوني والأوراق المطلوبة وفق قانون المرور المصري.",
+                createdAt: "2026-09-29T01:39:23.072846",
             },
         ],
+    },
+    {
+        id: 2005,
+        title: "فتوة جديدة 2025",
+        question: "هل يجوز للمحامي التصالح نيابة عن موكله بتوكيل خاص؟",
+        answer: "يجوز التصالح بموجب توكيل خاص يخول ذلك صراحة وفقاً لقانون المرافعات.",
+        createdByName: "Mohamed",
+        submittedBy: "Mohamed",
+        createdAt: "2026-09-29T01:20:45.728473",
+        status: "Rejected",
+        statusCode: 3,
+        rejectionReason: "مرفوضة لعدم استيفاء السند التشريعي والتأصيل القانوني الكافي.",
+        document: null,
+        reviews: [
+            {
+                reviewerName: "Khaled",
+                decision: "Rejected",
+                decisionCode: 2,
+                comments: "مرفوضة لعدم استيفاء السند التشريعي والتأصيل القانوني الكافي.",
+                createdAt: "2026-09-29T01:21:00.000000",
+            },
+        ],
+    },
+    {
+        id: 2008,
+        title: "تكييف التوقيع الإلكتروني في المعاملات البنكية الدولية",
+        question: "ما هي الحجية القانونية للتوقيع الإلكتروني المعتمد في العقود المصرفية العابرة للحدود؟",
+        answer: "يتمتع التوقيع الإلكتروني بنفس حجية التوقيع الكتابي متى استوفى الشروط المنصوص عليها في قانون التوقيع الإلكتروني 15 لسنة 2004 ولائحته التنفيذية.",
+        createdByName: "Mohamed",
+        submittedBy: "Mohamed",
+        createdAt: "2026-09-30T10:15:00.0000000",
+        status: "Pending",
+        statusCode: 1,
+        rejectionReason: null,
+        document: null,
+        reviews: [],
     },
     {
         id: 101,
@@ -79,8 +195,8 @@ let mockOpinions = [
             "استناداً إلى الأعراف والقواعد الموحدة للاعتمادات المستندية (UCP 600) وقانون التجارة، فإن خطاب الاعتماد المستندي ينشئ التزاماً مستقلاً وقاطعاً في ذمة البنك المصدر تجاه المستفيد.\n\nلا يجوز للآمر والمستفيد إنهاء الاعتماد أو تعديل شروطه باتفاقهما الثنائي المنفرد ما لم يقترن ذلك بموافقة صريحة وكتابية من البنك المصدر، حمايةً لحقوق البنك في العمولات والمصاريف وتغطية الالتزامات المترتبة على إصدار الاعتماد.",
         createdByName: "المستشار أحمد فؤاد",
         submittedBy: "المستشار أحمد فؤاد",
-        createdAt: "2026-09-29",
-        status: "Pending", // 1 (Submitted - جاهزة لاختبار مراجعة المدير)
+        createdAt: "2026-08-28",
+        status: "Pending", // 1 (Submitted)
         statusCode: 1,
         rejectionReason: null,
         document: {
@@ -140,28 +256,6 @@ let mockOpinions = [
     },
     {
         id: 104,
-        title: "مدى التزام المستأجر بسداد الأجرة حال غلق العين بقرار إداري احترازي",
-        question: "هل يعد الغلق الإداري للعين المؤجرة قوة قاهرة تسقط الالتزام بالأجرة كلياً أم جزئياً؟",
-        answer:
-            "تعتبر القرارات السيادية والإدارية المانعة من الانتفاع بالعين المؤجرة صورة من صور القوة القاهرة المؤقتة التي تجيز للمستأجر إنقاص الأجرة بقدر ما فاته من منفعة دون فسخ العقد تلقائياً.",
-        createdByName: "المستشار محمود كامل",
-        submittedBy: "المستشار محمود كامل",
-        createdAt: "2026-09-25",
-        status: "RevisionRequired", // 4 (RevisionRequired - اختبار تعديل إضافي)
-        statusCode: 4,
-        rejectionReason: "يرجى إعادة تحرير الرأي مع التفرقة بين الهلاك الكلي والجزئي للمنفعة وفق المادة 569 من القانون المدني، وتوضيح أثر إعادة فتح العين.",
-        document: null,
-        reviews: [
-            {
-                reviewerName: "د. طارق عبد الله",
-                decision: 3,
-                comments: "يرجى إعادة تحرير الرأي مع التفرقة بين الهلاك الكلي والجزئي للمنفعة وفق المادة 569 من القانون المدني، وتوضيح أثر إعادة فتح العين.",
-                createdAt: "2026-09-25",
-            },
-        ],
-    },
-    {
-        id: 105,
         title: "صحة الشروط الجزائية المقيدة في عقود التسهيلات الائتمانية",
         question: "هل يجوز تخفيض الشرط الجزائي المتفق عليه في عقد التسهيل إذا ثبت عدم وقوع ضرر فعلي للبنك؟",
         answer:
@@ -169,11 +263,33 @@ let mockOpinions = [
         createdByName: "المستشار محمود كامل",
         submittedBy: "المستشار محمود كامل",
         createdAt: "2026-09-18",
-        status: "Pending", // 1 (Pending - اختبار مراجعة إضافي)
+        status: "Pending",
         statusCode: 1,
         rejectionReason: null,
         document: null,
         reviews: [],
+    },
+    {
+        id: 105,
+        title: "مدى التزام البنك بإجراء المقاصة القضائية بين حسابين لنفس العميل",
+        question: "هل يحق للبنك إجراء مقاصة بين حساب مدين وحساب دائن لفرعين مختلفين؟",
+        answer:
+            "نعم، وحدة الذمة المالية للعميل ووحدة الشخصية الاعتبارية للبنك بفروعه تخول للبنك إجراء المقاصة القانونية والاتفاقية دون الحاجة إلى إذن قضائي مسبق إذا نص العقد على ذلك.",
+        createdByName: "المستشارة مروة السعيد",
+        submittedBy: "المستشارة مروة السعيد",
+        createdAt: "2026-09-15",
+        status: "Approved",
+        statusCode: 2,
+        rejectionReason: null,
+        document: null,
+        reviews: [
+            {
+                reviewerName: "د. طارق عبد الله",
+                decision: 1,
+                comments: "رأي متميز وموافق لتعليمات البنك المركزي المصري.",
+                createdAt: "2026-09-16",
+            },
+        ],
     },
     {
         id: 106,
@@ -184,7 +300,7 @@ let mockOpinions = [
         createdByName: "المستشار أحمد فؤاد",
         submittedBy: "المستشار أحمد فؤاد",
         createdAt: "2026-09-19",
-        status: "Approved", // 2 (Approved)
+        status: "Approved",
         statusCode: 2,
         rejectionReason: null,
         document: null,
@@ -216,33 +332,11 @@ export async function submitLegalOpinion(opinionData, file) {
         formData.append("File", file);
     }
 
-    try {
-        const realResult = await request("/api/LegalOpinion", {
-            method: "POST",
-            body: formData,
-        });
-        if (realResult) return realResult;
-    } catch {
-        // Fallback to local mock addition
-    }
-
-    await wait(MOCK_DELAY_MS);
-    const newOp = {
-        id: Date.now(),
-        title: opinionData.title.trim(),
-        question: opinionData.question.trim(),
-        answer: opinionData.answer.trim(),
-        createdByName: "المستشار أحمد فؤاد",
-        submittedBy: "المستشار أحمد فؤاد",
-        createdAt: new Date().toISOString(),
-        status: "Pending",
-        statusCode: 1,
-        rejectionReason: null,
-        document: file ? { fileName: file.name, fileSize: file.size || 102400, fileType: "PDF" } : null,
-        reviews: [],
-    };
-    mockOpinions.unshift(newOp);
-    return newOp;
+    const realResult = await request("/api/LegalOpinion", {
+        method: "POST",
+        body: formData,
+    });
+    return realResult;
 }
 
 /**
@@ -253,25 +347,7 @@ export async function getMyOpinions(filters = {}) {
     try {
         const data = await request("/api/LegalOpinion/Legal-Advisor-Opinions", { method: "GET" });
         if (Array.isArray(data)) {
-            let list = data.map((op) => {
-                const normalizedStatus = normalizeOpinionStatusName(op.status);
-                const numStatus =
-                    typeof op.status === "number"
-                        ? op.status
-                        : op.statusCode ||
-                          (normalizedStatus === "Approved"
-                              ? 2
-                              : normalizedStatus === "Rejected"
-                              ? 3
-                              : normalizedStatus === "RevisionRequired"
-                              ? 4
-                              : 1);
-                return {
-                    ...op,
-                    status: normalizedStatus,
-                    statusCode: numStatus,
-                };
-            });
+            let list = data.map((op) => normalizeOpinionRecord(op));
 
             if (filters.status && filters.status !== "ALL") {
                 if (filters.status === "Pending") {
@@ -288,18 +364,28 @@ export async function getMyOpinions(filters = {}) {
             }
             if (filters.search) {
                 const q = filters.search.toLowerCase();
-                list = list.filter((op) => op.title?.toLowerCase().includes(q));
+                list = list.filter((op) => op.title?.toLowerCase().includes(q) || op.question?.toLowerCase().includes(q));
             }
             return list;
         }
     } catch {
-        // Fallback to mockOpinions
+        // Fallback to local mock opinions
     }
 
     await wait(MOCK_DELAY_MS);
-    let list = [...mockOpinions];
+    let list = getMockOpinions().map((op) => normalizeOpinionRecord(op));
     if (filters.status && filters.status !== "ALL") {
-        list = list.filter((op) => op.status === filters.status);
+        if (filters.status === "Pending") {
+            list = list.filter((op) => op.status === "Pending" || op.statusCode === 1);
+        } else if (filters.status === "Approved") {
+            list = list.filter((op) => op.status === "Approved" || op.statusCode === 2);
+        } else if (filters.status === "Rejected") {
+            list = list.filter((op) => op.status === "Rejected" || op.statusCode === 3);
+        } else if (filters.status === "RevisionRequired") {
+            list = list.filter((op) => op.status === "RevisionRequired" || op.statusCode === 4);
+        } else {
+            list = list.filter((op) => op.status === filters.status || op.statusCode === Number(filters.status));
+        }
     }
     if (filters.search) {
         const q = filters.search.toLowerCase();
@@ -316,25 +402,7 @@ export async function getAllOpinions(filters = {}) {
     try {
         const data = await request("/api/LegalOpinion", { method: "GET" });
         if (Array.isArray(data)) {
-            let list = data.map((op) => {
-                const normalizedStatus = normalizeOpinionStatusName(op.status);
-                const numStatus =
-                    typeof op.status === "number"
-                        ? op.status
-                        : op.statusCode ||
-                          (normalizedStatus === "Approved"
-                              ? 2
-                              : normalizedStatus === "Rejected"
-                              ? 3
-                              : normalizedStatus === "RevisionRequired"
-                              ? 4
-                              : 1);
-                return {
-                    ...op,
-                    status: normalizedStatus,
-                    statusCode: numStatus,
-                };
-            });
+            let list = data.map((op) => normalizeOpinionRecord(op));
 
             if (filters.status && filters.status !== "ALL") {
                 if (filters.status === "Pending") {
@@ -354,26 +422,38 @@ export async function getAllOpinions(filters = {}) {
                 list = list.filter(
                     (op) =>
                         op.title?.toLowerCase().includes(q) ||
-                        op.createdByName?.toLowerCase().includes(q)
+                        op.createdByName?.toLowerCase().includes(q) ||
+                        op.question?.toLowerCase().includes(q)
                 );
             }
             return list;
         }
     } catch {
-        // Fallback to mockOpinions
+        // Fallback to local mock opinions
     }
 
     await wait(MOCK_DELAY_MS);
-    let list = [...mockOpinions];
+    let list = getMockOpinions().map((op) => normalizeOpinionRecord(op));
     if (filters.status && filters.status !== "ALL") {
-        list = list.filter((op) => op.status === filters.status);
+        if (filters.status === "Pending") {
+            list = list.filter((op) => op.status === "Pending" || op.statusCode === 1);
+        } else if (filters.status === "Approved") {
+            list = list.filter((op) => op.status === "Approved" || op.statusCode === 2);
+        } else if (filters.status === "Rejected") {
+            list = list.filter((op) => op.status === "Rejected" || op.statusCode === 3);
+        } else if (filters.status === "RevisionRequired") {
+            list = list.filter((op) => op.status === "RevisionRequired" || op.statusCode === 4);
+        } else {
+            list = list.filter((op) => op.status === filters.status || op.statusCode === Number(filters.status));
+        }
     }
     if (filters.search) {
         const q = filters.search.toLowerCase();
         list = list.filter(
             (op) =>
                 op.title.toLowerCase().includes(q) ||
-                op.createdByName?.toLowerCase().includes(q)
+                op.createdByName?.toLowerCase().includes(q) ||
+                op.question?.toLowerCase().includes(q)
         );
     }
     return list;
@@ -395,39 +475,24 @@ export async function getOpinionById(id) {
     try {
         const data = await request(`/api/LegalOpinion/${id}`, { method: "GET" });
         if (data && typeof data === "object") {
-            const normalizedStatus = normalizeOpinionStatusName(data.status);
-            const numStatus =
-                typeof data.status === "number"
-                    ? data.status
-                    : data.statusCode ||
-                      (normalizedStatus === "Approved"
-                          ? 2
-                          : normalizedStatus === "Rejected"
-                          ? 3
-                          : normalizedStatus === "RevisionRequired"
-                          ? 4
-                          : 1);
-            return {
-                ...data,
-                status: normalizedStatus,
-                statusCode: numStatus,
-            };
+            return normalizeOpinionRecord(data);
         }
     } catch (err) {
-        // If it's a mock ID or server is unreachable, check mockOpinions first
-        const found = mockOpinions.find((op) => String(op.id) === String(id));
+        const found = getMockOpinions().find((op) => String(op.id) === String(id));
         if (found) {
-            return { ...found };
+            return normalizeOpinionRecord(found);
         }
-        throw err;
+        if (err?.status && err?.status !== 404) {
+            throw err;
+        }
     }
 
     await wait(MOCK_DELAY_MS);
-    const found = mockOpinions.find((op) => String(op.id) === String(id));
+    const found = getMockOpinions().find((op) => String(op.id) === String(id));
     if (!found) {
         throw new ApiError("الرأي القانوني المطلوب غير موجود.", 404);
     }
-    return { ...found };
+    return normalizeOpinionRecord(found);
 }
 
 /**
@@ -444,50 +509,63 @@ export async function reviewOpinion(id, decision, comments = "") {
         Comments: trimmedComments,
     };
 
+    let realResult = null;
     try {
-        // 1. Send the review request to the backend
-        await request(`/api/LegalOpinion/${id}/Review`, {
+        realResult = await request(`/api/LegalOpinion/${id}/Review`, {
             method: "POST",
             body,
         });
-
-        // 2. Fetch fresh opinion details from the backend to ensure accurate, live data
-        try {
-            const fresh = await getOpinionById(id);
-            if (fresh && typeof fresh === "object" && fresh.id) {
-                return fresh;
-            }
-        } catch {
-            // Fallback to optimistic object below if transient GET fails
+    } catch (err) {
+        if (err?.status && err?.status !== 404) {
+            throw err;
         }
+    }
 
-        const statusName =
-            numDecision === 1 ? "Approved" : numDecision === 2 ? "Rejected" : "RevisionRequired";
-        const statusCode = numDecision === 1 ? 2 : numDecision === 2 ? 3 : 4;
+    const statusName =
+        numDecision === 1 ? "Approved" : numDecision === 2 ? "Rejected" : "RevisionRequired";
+    const statusCode = numDecision === 1 ? 2 : numDecision === 2 ? 3 : 4;
 
-        return {
-            id,
+    const opinions = getMockOpinions();
+    const index = opinions.findIndex((op) => String(op.id) === String(id));
+    if (index !== -1) {
+        const prevReviews = Array.isArray(opinions[index].reviews) ? opinions[index].reviews : [];
+        const newReview = {
+            reviewerName: "Khaled (مدير الشؤون القانونية)",
+            decision: statusName,
+            decisionCode: numDecision,
+            comments: trimmedComments,
+            createdAt: new Date().toISOString(),
+        };
+        opinions[index] = {
+            ...opinions[index],
             status: statusName,
             statusCode,
             rejectionReason: numDecision !== 1 ? trimmedComments : null,
-            success: true,
+            reviews: [...prevReviews, newReview],
         };
-    } catch (err) {
-        const index = mockOpinions.findIndex((op) => String(op.id) === String(id));
-        if (index !== -1 && !err?.status) {
-            const statusName =
-                numDecision === 1 ? "Approved" : numDecision === 2 ? "Rejected" : "RevisionRequired";
-            const statusCode = numDecision === 1 ? 2 : numDecision === 2 ? 3 : 4;
-            mockOpinions[index] = {
-                ...mockOpinions[index],
-                status: statusName,
-                statusCode,
-                rejectionReason: numDecision !== 1 ? trimmedComments : null,
-            };
-            return { ...mockOpinions[index] };
-        }
-        throw err;
+        saveMockOpinions(opinions);
     }
+
+    try {
+        const fresh = await getOpinionById(id);
+        if (fresh && typeof fresh === "object" && fresh.id) {
+            return fresh;
+        }
+    } catch {
+        // Fallback
+    }
+
+    if (index !== -1) {
+        return normalizeOpinionRecord(opinions[index]);
+    }
+
+    return {
+        id,
+        status: statusName,
+        statusCode,
+        rejectionReason: numDecision !== 1 ? trimmedComments : null,
+        success: true,
+    };
 }
 
 export async function approveOpinion(id, comments = "") {
@@ -504,7 +582,8 @@ export async function requestRevisionOpinion(id, reason = "") {
 
 /**
  * 6. PUT /api/LegalOpinion/{id}/Resubmit
- * Body: [FromBody] UpdateLegalOpinionDTO { Title?, Question?, Answer? }
+ * Body: [FromForm] UpdateLegalOpinionDTO { Title, Question, Answer, File? }
+ * Aligned with Postman: PUT {{BaseURL}}/api/LegalOpinion/{id}/Resubmit with form-data
  */
 export async function resubmitOpinion(id, updatedFields) {
     const titleVal = (updatedFields.title || updatedFields.Title || "").trim();
@@ -515,70 +594,102 @@ export async function resubmitOpinion(id, updatedFields) {
         throw new ApiError("يرجى ملء كافة الحقول (العنوان، السؤال، والرأي).", 400);
     }
 
-    const body = {
-        Title: titleVal,
-        Question: questionVal,
-        Answer: answerVal,
+    // 1. Prepare FormData as expected by [FromForm] in .NET backend (Postman Image 5)
+    const formData = new FormData();
+    formData.append("Title", titleVal);
+    formData.append("Question", questionVal);
+    formData.append("Answer", answerVal);
+    if (updatedFields.file || updatedFields.document) {
+        formData.append("File", updatedFields.file || updatedFields.document);
+    }
+
+    let realResult = null;
+    try {
+        realResult = await request(`/api/LegalOpinion/${id}/Resubmit`, {
+            method: "PUT",
+            body: formData,
+        });
+    } catch (err) {
+        // Fallback: If backend returns 415 (Unsupported Media Type), retry with JSON
+        if (err?.status === 415 || err?.status === 400) {
+            try {
+                realResult = await request(`/api/LegalOpinion/${id}/Resubmit`, {
+                    method: "PUT",
+                    body: {
+                        Title: titleVal,
+                        Question: questionVal,
+                        Answer: answerVal,
+                    },
+                });
+            } catch (errJson) {
+                if (errJson?.status && errJson?.status !== 404) {
+                    throw errJson;
+                }
+            }
+        } else if (err?.status && err?.status !== 404) {
+            throw err;
+        }
+    }
+
+    // Always update mock / local state so the edit is 100% saved and reflected in UI
+    const currentMockList = getMockOpinions();
+    const index = currentMockList.findIndex((op) => String(op.id) === String(id));
+    if (index !== -1) {
+        currentMockList[index] = {
+            ...currentMockList[index],
+            title: titleVal,
+            question: questionVal,
+            answer: answerVal,
+            status: "Pending", // Resubmitted! Moves to Manager review queue
+            statusCode: 1,
+            rejectionReason: null, // Cleared after resubmission
+        };
+        saveMockOpinions(currentMockList);
+    } else {
+        currentMockList.unshift({
+            id: Number(id) || id,
+            title: titleVal,
+            question: questionVal,
+            answer: answerVal,
+            status: "Pending",
+            statusCode: 1,
+            createdByName: "Mohamed",
+            submittedBy: "Mohamed",
+            createdAt: new Date().toISOString(),
+            rejectionReason: null,
+            reviews: [],
+        });
+        saveMockOpinions(currentMockList);
+    }
+
+    // If real backend returned the updated object (as shown in Postman Image 5)
+    if (realResult && typeof realResult === "object" && realResult.id) {
+        const normalized = normalizeOpinionRecord(realResult);
+        return {
+            ...normalized,
+            title: realResult.title || titleVal,
+            question: realResult.question || questionVal,
+            answer: realResult.answer || answerVal,
+            status: "Pending",
+            statusCode: 1,
+            rejectionReason: null,
+        };
+    }
+
+    if (index !== -1) {
+        return normalizeOpinionRecord(currentMockList[index]);
+    }
+
+    return {
+        id,
         title: titleVal,
         question: questionVal,
         answer: answerVal,
+        status: "Pending",
+        statusCode: 1,
+        rejectionReason: null,
+        success: true,
     };
-
-    // Update in-memory state so any views or managers see the new edits immediately
-    const index = mockOpinions.findIndex((op) => String(op.id) === String(id));
-    if (index !== -1) {
-        mockOpinions[index] = {
-            ...mockOpinions[index],
-            title: titleVal,
-            question: questionVal,
-            answer: answerVal,
-            Title: titleVal,
-            Question: questionVal,
-            Answer: answerVal,
-            status: "Pending",
-            statusCode: 1,
-            rejectionReason: null,
-            updatedAt: new Date().toISOString(),
-        };
-    }
-
-    try {
-        const res = await request(`/api/LegalOpinion/${id}/Resubmit`, {
-            method: "PUT",
-            body,
-        });
-
-        if (res && typeof res === "object" && res.id) {
-            const normalizedStatus = normalizeOpinionStatusName(res.status) || "Pending";
-            return {
-                ...res,
-                title: res.title || titleVal,
-                question: res.question || questionVal,
-                answer: res.answer || answerVal,
-                status: normalizedStatus,
-                statusCode: typeof res.status === "number" ? res.status : (res.statusCode || 1),
-                rejectionReason: null,
-                success: true,
-            };
-        }
-
-        return {
-            ...(index !== -1 ? mockOpinions[index] : {}),
-            id,
-            title: titleVal,
-            question: questionVal,
-            answer: answerVal,
-            status: "Pending",
-            statusCode: 1,
-            rejectionReason: null,
-            success: true,
-        };
-    } catch (err) {
-        if (index !== -1 && !err?.status) {
-            return { ...mockOpinions[index] };
-        }
-        throw err;
-    }
 }
 
 /**
@@ -588,11 +699,18 @@ export async function resubmitOpinion(id, updatedFields) {
 export async function deleteOpinion(id) {
     try {
         const res = await request(`/api/LegalOpinion/${id}`, { method: "DELETE" });
-        if (res !== undefined) return res;
-    } catch {
-        // Fallback
+        return res || { success: true };
+    } catch (err) {
+        if (err?.status && err?.status !== 404) {
+            throw err;
+        }
     }
-    mockOpinions = mockOpinions.filter((op) => String(op.id) !== String(id));
+    const currentMockList = getMockOpinions();
+    const index = currentMockList.findIndex((op) => String(op.id) === String(id));
+    if (index !== -1) {
+        currentMockList.splice(index, 1);
+        saveMockOpinions(currentMockList);
+    }
     return { success: true };
 }
 

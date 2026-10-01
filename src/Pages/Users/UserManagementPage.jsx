@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
     Users,
@@ -32,59 +32,64 @@ export default function UserManagementPage() {
     const isAr = lang === "ar";
 
     const [users, setUsers] = useState([]);
-    const [allUsers, setAllUsers] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
-    const [showSuggestions, setShowSuggestions] = useState(false);
     const [roleFilter, setRoleFilter] = useState("ALL");
     const [statusFilter, setStatusFilter] = useState("ALL");
     const [error, setError] = useState("");
-    const searchContainerRef = useRef(null);
-
-    // Initial load for all users to support instant 3-char autocomplete
-    useEffect(() => {
-        async function fetchAll() {
-            try {
-                const data = await getUsers();
-                setAllUsers(data || []);
-            } catch {
-                // Ignore silent prefetch error
-            }
-        }
-        fetchAll();
-    }, []);
-
-    // Close suggestions on outside click
-    useEffect(() => {
-        function handleClickOutside(event) {
-            if (searchContainerRef.current && !searchContainerRef.current.contains(event.target)) {
-                setShowSuggestions(false);
-            }
-        }
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
 
     const loadUsers = useCallback(async () => {
         setIsLoading(true);
         setError("");
         try {
-            const data = await getUsers({
-                search: searchQuery.trim() || undefined,
-                role: roleFilter,
-                status: statusFilter,
-            });
+            const data = await getUsers();
             setUsers(data || []);
         } catch {
             setError(isAr ? "تعذر تحميل قائمة المستخدمين." : "Failed to load users list.");
         } finally {
             setIsLoading(false);
         }
-    }, [searchQuery, roleFilter, statusFilter, isAr]);
+    }, [isAr]);
 
     useEffect(() => {
         loadUsers();
     }, [loadUsers]);
+
+    // Live filtering in page by Name, Phone, Username, Email, Role, Status
+    const filteredUsers = useMemo(() => {
+        const q = searchQuery.trim().toLowerCase();
+        return users.filter((u) => {
+            // Role filter
+            if (roleFilter !== "ALL" && u.role !== roleFilter) {
+                return false;
+            }
+            // Status filter
+            if (statusFilter !== "ALL") {
+                const isActive = statusFilter === "ACTIVE";
+                if (u.isActive !== isActive) return false;
+            }
+            // Search query filter (matches name, phone number, username, email)
+            if (q) {
+                const fullName = `${u.firstName || ""} ${u.lastName || ""}`.toLowerCase();
+                const firstName = (u.firstName || "").toLowerCase();
+                const lastName = (u.lastName || "").toLowerCase();
+                const phone = (u.phoneNumber || "").toLowerCase();
+                const username = (u.userName || "").toLowerCase();
+                const email = (u.email || "").toLowerCase();
+
+                const matches =
+                    fullName.includes(q) ||
+                    firstName.includes(q) ||
+                    lastName.includes(q) ||
+                    phone.includes(q) ||
+                    username.includes(q) ||
+                    email.includes(q);
+
+                if (!matches) return false;
+            }
+            return true;
+        });
+    }, [users, searchQuery, roleFilter, statusFilter]);
 
     const handleToggleStatus = async (id, currentStatus) => {
         const isSelf = Boolean(
@@ -105,9 +110,6 @@ export default function UserManagementPage() {
         try {
             await toggleUserStatus(id, currentStatus);
             setUsers((prev) =>
-                prev.map((u) => (u.id === id ? { ...u, isActive: !currentStatus } : u))
-            );
-            setAllUsers((prev) =>
                 prev.map((u) => (u.id === id ? { ...u, isActive: !currentStatus } : u))
             );
         } catch {
@@ -217,114 +219,16 @@ export default function UserManagementPage() {
                 {/* Filter and Search Bar */}
                 <div className="relative z-30 rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0B1120]/80 p-5 shadow-xl backdrop-blur-md mb-8">
                     <div className="flex flex-col lg:flex-row items-center justify-between gap-4">
-                        {/* Search Bar with Auto-Suggestions on 3+ characters */}
-                        <div ref={searchContainerRef} className="relative z-40 w-full lg:w-96">
+                        {/* Search Bar */}
+                        <div className="relative w-full lg:w-96">
                             <Search className="absolute top-1/2 -translate-y-1/2 start-3.5 h-4 w-4 text-slate-400" />
                             <input
                                 type="text"
                                 placeholder={isAr ? "بحث بالاسم أو رقم الهاتف…" : "Search by name or phone..."}
                                 value={searchQuery}
-                                onFocus={() => {
-                                    if (searchQuery.trim().length >= 3) setShowSuggestions(true);
-                                }}
-                                onChange={(e) => {
-                                    setSearchQuery(e.target.value);
-                                    if (e.target.value.trim().length >= 3) {
-                                        setShowSuggestions(true);
-                                    } else {
-                                        setShowSuggestions(false);
-                                    }
-                                }}
-                                className="w-full rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#0E1528] py-2.5 pe-4 ps-10 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-blue-500 focus:outline-none"
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#0E1528] py-2.5 pe-4 ps-10 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-blue-500 focus:outline-none transition-colors"
                             />
-
-                            {/* Dropdown Suggestions */}
-                            {showSuggestions && searchQuery.trim().length >= 3 && (
-                                <div className="absolute top-full start-0 end-0 mt-2 z-50 rounded-2xl border border-slate-200 dark:border-white/15 bg-white dark:bg-[#0E1528] shadow-2xl shadow-black/60 p-2 max-h-72 overflow-y-auto backdrop-blur-xl">
-                                    {(() => {
-                                        const q = searchQuery.trim().toLowerCase();
-                                        const filtered = allUsers.filter((u) => {
-                                            const fullName = `${u.firstName || ""} ${u.lastName || ""}`.toLowerCase();
-                                            const revName = `${u.lastName || ""} ${u.firstName || ""}`.toLowerCase();
-                                            const phone = (u.phoneNumber || "").toLowerCase();
-                                            const username = (u.userName || "").toLowerCase();
-                                            const email = (u.email || "").toLowerCase();
-                                            return (
-                                                fullName.includes(q) ||
-                                                revName.includes(q) ||
-                                                phone.includes(q) ||
-                                                username.includes(q) ||
-                                                email.includes(q)
-                                            );
-                                        }).slice(0, 6);
-
-                                        if (filtered.length === 0) {
-                                            return (
-                                                <div className="p-3 text-center text-xs text-slate-400">
-                                                    {isAr ? "لا توجد اقتراحات مطابقة" : "No matching suggestions"}
-                                                </div>
-                                            );
-                                        }
-
-                                        return (
-                                            <div className="space-y-1">
-                                                <p className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                                                    {isAr ? "اقتراحات المستخدمين (اضغط لفتح الملف، أو تصفية للجدول)" : "Suggestions (Click to open, or filter table)"}
-                                                </p>
-                                                {filtered.map((s) => (
-                                                    <div
-                                                        key={s.id}
-                                                        onClick={() => {
-                                                            navigate(`/users/${s.id}`);
-                                                            setShowSuggestions(false);
-                                                        }}
-                                                        className="w-full flex items-center justify-between p-2 rounded-xl text-start hover:bg-slate-100 dark:hover:bg-white/5 transition-colors group cursor-pointer"
-                                                    >
-                                                        <div className="flex items-center gap-2.5">
-                                                            {s.profilePicture && s.profilePicture !== "No Profile Picture" ? (
-                                                                <img
-                                                                    src={s.profilePicture}
-                                                                    alt={s.firstName}
-                                                                    className="h-8 w-8 rounded-lg object-cover"
-                                                                />
-                                                            ) : (
-                                                                <div className="h-8 w-8 rounded-lg bg-blue-500/15 border border-blue-500/20 text-blue-500 flex items-center justify-center font-bold text-xs">
-                                                                    {s.firstName?.[0]}
-                                                                </div>
-                                                            )}
-                                                            <div>
-                                                                <p className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-blue-500 transition-colors">
-                                                                    {s.firstName} {s.lastName}
-                                                                </p>
-                                                                <p className="text-[10px] text-slate-400 font-mono">
-                                                                    {s.phoneNumber ? `${s.phoneNumber} · ` : ""}@{s.userName}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex items-center gap-1.5">
-                                                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-white/5 text-slate-400">
-                                                                {s.role}
-                                                            </span>
-                                                            <button
-                                                                type="button"
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    setSearchQuery(`${s.firstName} ${s.lastName}`);
-                                                                    setShowSuggestions(false);
-                                                                }}
-                                                                className="text-[10px] font-bold text-blue-500 hover:text-blue-600 px-2 py-1 rounded-lg hover:bg-blue-500/10 transition-colors border border-blue-500/20"
-                                                                title={isAr ? "تصفية الجدول بهذا الاسم" : "Filter table"}
-                                                            >
-                                                                {isAr ? "تصفية" : "Filter"}
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        );
-                                    })()}
-                                </div>
-                            )}
                         </div>
 
                         {/* Select Filters */}
@@ -363,7 +267,7 @@ export default function UserManagementPage() {
                             <Loader2 className="h-6 w-6 animate-spin text-blue-500 me-2" />
                             <span>{isAr ? "جارٍ تحميل المستخدمين…" : "Loading users..."}</span>
                         </div>
-                    ) : users.length === 0 ? (
+                    ) : filteredUsers.length === 0 ? (
                         <div className="p-12 text-center text-slate-500">
                             <Users className="mx-auto h-12 w-12 text-slate-400 mb-3 opacity-60" />
                             <p className="font-bold text-sm">{isAr ? "لم يتم العثور على مستخدمين مطابقين" : "No users found"}</p>
@@ -383,7 +287,7 @@ export default function UserManagementPage() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100 dark:divide-white/5 font-medium">
-                                    {users.map((u) => {
+                                    {filteredUsers.map((u) => {
                                         const hasPicture = u.profilePicture && u.profilePicture !== "No Profile Picture";
                                         return (
                                             <tr
